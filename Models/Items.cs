@@ -1,13 +1,13 @@
 using Finder.Bot.Enums;
 namespace Finder.Bot.Models;
 
-public class ItemsRoot {
-    public List<Items> Items { get; set; } = new();
+public class Contents {
+    public List<Item> Items { get; set; } = new();
 }
-public class Items {
+public class Item {
     public Guid Id { get; set; }
-    public string? Name { get; set; }
-    public string? Description { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
     public bool Tradeable { get; set; }
     public bool Buyable { get; set; }
     public bool Sellable { get; set; }

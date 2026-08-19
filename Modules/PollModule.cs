@@ -2,7 +2,6 @@
 // using Discord.Interactions;
 // using Discord.WebSocket;
 // using Finder.Bot.Db.Repositories;
-// using Finder.Bot.Repositories;
 //
 // namespace Finder.Bot.Modules; 
 //

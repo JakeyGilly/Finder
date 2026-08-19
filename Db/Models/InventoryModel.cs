@@ -1,8 +1,8 @@
 namespace Finder.Bot.Db.Models;
 
-public class EconomyModel {
+public class InventoryModel {
     public ulong GuildId { get; set; } // composite key
     public ulong UserId { get; set; } // composite key
-    public int Money { get; set; }
-    public int Bank { get; set; }
+    public Guid ItemId { get; set; } // composite key
+    public int Quantity { get; set; } = 1;
 }

@@ -13,34 +13,14 @@ public class EfRepository<T>(BotDbContext context) : IRepository<T> where T : cl
     public async Task<T?> GetItemAsync(Expression<Func<T, bool>> predicate) =>
         await _dbSet.FirstOrDefaultAsync(predicate);
 
-    public async Task AddItemAsync(T item) {
-        await _dbSet.AddAsync(item);
-        await _context.SaveChangesAsync();
+    // these dont do db calls yet.
+    // mark for addition
+    public void AddItem(T item) {
+        _dbSet.Add(item);
     }
 
-    public async Task UpdateItemAsync(Expression<Func<T, bool>> predicate, T item) {
-        var existing = await GetItemAsync(predicate);
-        if (existing != null) {
-            _context.Entry(existing).CurrentValues.SetValues(item);
-            await _context.SaveChangesAsync();
-        }
-    }
-
-    public async Task UpsertItemAsync(Expression<Func<T, bool>> predicate, T item) {
-        var existing = await GetItemAsync(predicate);
-        if (existing == null) {
-            await AddItemAsync(item);
-        } else {
-            _context.Entry(existing).CurrentValues.SetValues(item);
-            await _context.SaveChangesAsync();
-        }
-    }
-    
-    public async Task DeleteItemAsync(Expression<Func<T, bool>> predicate) {
-        var item = await GetItemAsync(predicate);
-        if (item != null) {
-            _dbSet.Remove(item);
-            await _context.SaveChangesAsync();
-        }
+    // mark for deletion
+    public void DeleteItem(T item) {
+        _dbSet.Remove(item);
     }
 }

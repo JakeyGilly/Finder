@@ -8,4 +8,7 @@ public interface IUnitOfWork {
     IRepository<TicketsModel> Ticketing { get; }
     IRepository<CountdownModel> Countdown { get; }
     IRepository<LevellingModel> Levelling { get; }
+    IRepository<EconomyModel> Economy { get; }
+    IRepository<InventoryModel> Inventory { get; }
+    Task SaveChangesAsync();
 }

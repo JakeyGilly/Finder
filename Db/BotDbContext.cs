@@ -19,6 +19,14 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
         modelBuilder.Entity<TicketsModel>()
             .HasKey(x => x.ChannelId);
         
+        modelBuilder.Entity<CountdownModel>()
+            .HasKey(x => x.Id);
+        
+        modelBuilder.Entity<EconomyModel>()
+            .HasKey(x => new { x.GuildId, x.UserId });
+        
+        modelBuilder.Entity<InventoryModel>()
+            .HasKey(x => new { x.GuildId, x.UserId, x.ItemId });
         
         // change this
         modelBuilder.Entity<TicketsModel>()

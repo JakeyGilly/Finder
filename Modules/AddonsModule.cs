@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules; 
@@ -9,7 +8,7 @@ namespace Finder.Bot.Modules;
 public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("list", "Lists the installed addons", runMode: RunMode.Async)]
     public async Task GetAddons() {
-        var addons = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
+        var addons = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == Context.Guild.Id && m.Enabled);
         var embed = new EmbedBuilder {
             Title = "Addon list",
             Footer = new EmbedFooterBuilder {
@@ -17,7 +16,7 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
             }
         };
         foreach (var addon in Enum.GetValues<Enums.Addons>()) {
-            embed.AddField(addon.ToString(), addons.Contains((Enums.Addons)addon) ? "Installed" : "Not installed");
+            embed.AddField(addon.ToString(), addons.Any(a => a.Addon == addon) ? "Installed" : "Not Installed");
         }
         await RespondAsync(embed: embed.Build());
     }
@@ -28,16 +27,21 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
             await RespondAsync("Error: Addon not found");
             return;
         }
-        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
-        if (value.Contains(addonEnum)) {
+        var addonData = await unitOfWork.Addons.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum);
+        if (addonData?.Enabled == true) {
             await RespondAsync("Error: Addon already installed");
             return;
         }
-        await unitOfWork.Addons.UpsertItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum, new AddonsModel {
-            GuildId = Context.Guild.Id,
-            Addon = addonEnum,
-            Enabled = true
-        });
+        if (addonData == null) {
+            unitOfWork.Addons.AddItem(new() {
+                GuildId = Context.Guild.Id,
+                Addon = addonEnum,
+                Enabled = true
+            });
+        } else {
+            addonData.Enabled = true;
+        }
+        await unitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Installed",
             Fields = [
@@ -58,16 +62,13 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
             await RespondAsync("Error: Addon not found");
             return;
         }
-        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
-        if (!value.Contains(addonEnum)) {
+        var addonData = await unitOfWork.Addons.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum && m.Enabled);
+        if (addonData == null) {
             await RespondAsync("Error: Addon not installed");
             return;
         }
-        await unitOfWork.Addons.UpsertItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum, new AddonsModel {
-            GuildId = Context.Guild.Id,
-            Addon = addonEnum,
-            Enabled = false
-        });
+        addonData.Enabled = false;
+        await unitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Uninstalled",
             Fields = [
@@ -85,22 +86,23 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
     
 public class AddonsInstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(context.Guild.Id);
+        var installedAddons = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == context.Guild.Id && m.Enabled);
         List<AutocompleteResult> results = [
             .. Enum.GetValues<Enums.Addons>()
-                .Select(addon => new AutocompleteResult(addon.ToString(), addon.ToString()))
+                .Where(a => installedAddons.All(x => x.Addon != a))
+                .Select(a => new AutocompleteResult(a.ToString(), a.ToString()))
+                .Take(25)
         ];
-        results.RemoveAll(r => value.Contains(Enum.Parse<Enums.Addons>(r.Name)));
         // max - 25 suggestions at a time (API limit)
-        return AutocompletionResult.FromSuccess(results.Take(25));
+        return AutocompletionResult.FromSuccess(results);
     }
 }
     
 public class AddonsUninstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(context.Guild.Id);
+        var installed = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == context.Guild.Id && m.Enabled);
         List<AutocompleteResult> results = [
-            .. value.Select(addon => new AutocompleteResult(addon.ToString(), addon.ToString()))
+            .. installed.Select(a => new AutocompleteResult(a.ToString(), a.ToString()))
         ];
         // max - 25 suggestions at a time (API limit)
         return AutocompletionResult.FromSuccess(results.Take(25));

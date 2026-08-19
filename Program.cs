@@ -6,6 +6,7 @@ using Finder.Bot.Db.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Finder.Bot.Handlers;
 using Finder.Bot.Modules.Addons;
+using Finder.Bot.Modules.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -26,7 +27,7 @@ class Program {
         client.Log += LoggingService.LogAsync;
         commands.Log += LoggingService.LogAsync;
         // UnBanMuteTimer.StartTimer(client, services.GetRequiredService<IUnitOfWork>());
-        // CountdownTimer.StartTimer(client, services.GetRequiredService<IUnitOfWork>());
+        new CountdownTimer(client, services).StartTimer();
         client.ReactionAdded += TicTacToeModule.OnReactionAddedEvent;
         // client.ReactionAdded += new ModerationModule(services.GetRequiredService<IUnitOfWork>()).OnReactionAddedEvent;
         // client.ButtonExecuted += new PollModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
