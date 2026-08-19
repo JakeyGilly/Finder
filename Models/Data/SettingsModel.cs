@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-namespace Finder.Bot.Models.Data.Bot;
+namespace Finder.Bot.Models.Data;
 
 public class SettingsModel {
     [Key]
-    public Int64 GuildId { get; set; }
+    public string Id { get; set; } // guild Id
     public Dictionary<string, string> Settings { get; set; }
 }

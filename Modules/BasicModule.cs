@@ -3,9 +3,7 @@ using Discord.Interactions;
 
 namespace Finder.Bot.Modules;
 
-public class BasicModule : InteractionModuleBase<ShardedInteractionContext>
-{
-    
+public class BasicModule : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("echo", "Repeat the input")]
     public async Task Echo(string echo, [Summary(description: "mention the user")] bool mention = false)
         => await RespondAsync(echo + (mention ? Context.User.Mention : string.Empty));

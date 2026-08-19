@@ -1,15 +1,12 @@
 // using Discord;
 // using Discord.Interactions;
 // using Discord.WebSocket;
+// using Finder.Bot.Db.Repositories;
 // using Finder.Bot.Repositories;
 //
 // namespace Finder.Bot.Modules; 
 //
-// public class PollModule : InteractionModuleBase<ShardedInteractionContext> {
-//     private readonly IUnitOfWork _unitOfWork;
-//     public PollModule(IUnitOfWork unitOfWork) {
-//         _unitOfWork = unitOfWork;
-//     }
+// public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
 //     [SlashCommand("poll", "Create a poll for users to vote on.", runMode: RunMode.Async)]
 //     public async Task PollCommand(string question, string? answer1 = null, string? answer2 = null, string? answer3 = null, string? answer4 = null, string? answer5 = null, string? answer6 = null, string? answer7 = null, string? answer8 = null, string? answer9 = null, string? answer10 = null,
 //     string? answer11 = null, string? answer12 = null, string? answer13 = null, string? answer14 = null, string? answer15 = null, string? answer16 = null, string? answer17 = null, string? answer18 = null, string? answer19 = null, string? answer20 = null, string? answer21 = null, string? answer22 = null, 
@@ -192,7 +189,7 @@
 //                 poll.VotersId.Add((Int64)messageComponent.User.Id);
 //             } else {
 //                 await messageComponent.RespondAsync("You already voted on this poll", ephemeral: true);
-//             }
+//             }   
 //         }
 //     }
 // }

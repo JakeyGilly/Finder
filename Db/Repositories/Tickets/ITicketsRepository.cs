@@ -1,8 +1,7 @@
-﻿using Finder.Bot.Models.Data.Bot;
+﻿using Finder.Bot.Models.Data;
 
 namespace Finder.Bot.Db.Repositories.Tickets;
 
-public interface ITicketsRepository {
-    Task<TicketsModel> GetAsync(ulong guildId, string ticketId);
-    Task<List<TicketsModel>> GetAllAsync(ulong guildId);
+public interface ITicketsRepository: IRepository<TicketsModel> {
+    Task<TicketsModel> GetTicketAsync(ulong channelId);
 }

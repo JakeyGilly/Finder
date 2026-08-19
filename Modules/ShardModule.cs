@@ -1,7 +1,6 @@
 using Discord;
 using Discord.Interactions;
 using System.Diagnostics;
-using Finder.Bot.Handlers;
 
 namespace Finder.Bot.Modules; 
 
@@ -25,38 +24,33 @@ public class ShardModule : InteractionModuleBase<ShardedInteractionContext> {
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Shard info",
             Description = $"{emoji} Shard {shard.ShardId+1}/{shardCount}",
-            Fields = new List<EmbedFieldBuilder> {
-                new()
-                {
+            Fields = [
+                new() {
                     Name = "Guilds",
                     Value = guildCount.ToString(),
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "Users",
                     Value = userCount.ToString(),
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "RAM",
                     Value = $"{ramMb} MB",
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "Ping",
                     Value = $"{ping}ms",
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "Uptime",
                     Value = uptime.ToString(@"dd\.hh\:mm\:ss"),
                     IsInline = true
                 }
-            }
+            ]
         }.Build());
     }
 }

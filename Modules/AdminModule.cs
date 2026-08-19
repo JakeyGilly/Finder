@@ -30,26 +30,23 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         await ((SocketTextChannel)Context.Channel).ModifyAsync(x => x.SlowModeInterval = seconds);
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Slowmode set",
-            Fields = new List<EmbedFieldBuilder> {
-                new()
-                {
+            Fields = [
+                new() {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "Slowmode",
                     Value = seconds.ToString(),
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -66,20 +63,18 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         }
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Channel locked down",
-            Fields = new List<EmbedFieldBuilder> {
-                new()
-                {
+            Fields = [
+                new() {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new()
-                {
+                new() {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }

@@ -2,17 +2,12 @@ using Discord;
 using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
-using Finder.Bot.Db;
+using Finder.Bot.Attributes;
 using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules.Addons; 
 
-public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> {
-    private readonly IUnitOfWork _unitOfWork;
-    
-    public TicTacToeModule(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
+public class TicTacToeModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     private static readonly List<TicTacToe> Games = new();
     private static readonly IEnumerable<string> ValidEmotes = new List<string> {
         "1️⃣",
@@ -28,23 +23,9 @@ public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> 
         "❌"
     };
 
+    [RequireAddon(Enums.Addons.TicTacToe)]
     [SlashCommand("tictactoe", "Play TicTacToe", runMode: RunMode.Async)]
     public async Task TicTacToeCommand(SocketGuildUser user) {
-        if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "TicTacToe")) {
-            await RespondAsync(embed: new EmbedBuilder {
-                Title = "TicTacToe",
-                Description = "This addon is disabled on this server.",
-                Fields =
-                [
-                    new()
-                    {
-                        Name = "Enable",
-                        Value = "Use `/addons install TicTacToe` to enable this addon."
-                    }
-                ]
-            }.Build());
-            return;
-        }
         if (user.IsBot) {
             await RespondAsync("The user is a bot.");
             return;
@@ -81,10 +62,8 @@ public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> 
                         await game.playChannel.SendMessageAsync($"{game.guild.GetUser(game.p1Id).Mention} and {game.guild.GetUser(game.p2Id).Mention} are ready!\nStarting game...");
                         game.playMessage = await game.playChannel.SendMessageAsync(embed: new EmbedBuilder {
                             Title = "Tic Tac Toe",
-                            Fields =
-                            [
-                                new()
-                                {
+                            Fields = [
+                                new() {
                                     Name = "The Playing Board",
                                     Value = "Please Wait..."
                                 }
@@ -99,8 +78,7 @@ public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> 
                             x.Embed = new EmbedBuilder {
                                 Title = "Tic Tac Toe",
                                 Fields = new List<EmbedFieldBuilder> {
-                                    new()
-                                    {
+                                    new() {
                                         Name = "The Playing Board",
                                         Value = game.GenerateGrid()
                                     }
@@ -127,10 +105,8 @@ public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> 
             await game.playMessage.ModifyAsync(x => {
                 x.Embed = new EmbedBuilder {
                     Title = "Tic Tac Toe",
-                    Fields =
-                    [
-                        new()
-                        {
+                    Fields = [
+                        new() {
                             Name = "The Playing Board",
                             Value = game.GenerateGrid()
                         }
@@ -148,8 +124,7 @@ public class TicTacToeModule : InteractionModuleBase<ShardedInteractionContext> 
                     x.Embed = new EmbedBuilder {
                         Title = "Tic Tac Toe",
                         Fields = [
-                            new()
-                            {
+                            new() {
                                 Name = "The Playing Board",
                                 Value = game.GenerateGrid()
                             }

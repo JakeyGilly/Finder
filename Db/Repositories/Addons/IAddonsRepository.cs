@@ -1,5 +1,9 @@
-﻿namespace Finder.Bot.Db.Repositories.Addons;
+﻿using Finder.Bot.Models.Data;
 
-public interface IAddonsRepository {
-    Task<bool> AddonEnabled(ulong guildId, string addonName);
+namespace Finder.Bot.Db.Repositories.Addons;
+
+public interface IAddonsRepository: IRepository<AddonsModel> {
+    Task<bool> AddonEnabledInGuildAsync(ulong guildId, Enums.Addons addon);
+    Task<Dictionary<Enums.Addons, bool>> GetAddonsForGuildAsync(ulong guildId);
+    Task UpdateAddonForGuildAsync(ulong guildId, Enums.Addons addon, bool enabled);
 }

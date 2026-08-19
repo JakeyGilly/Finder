@@ -1,33 +1,25 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Finder.Bot.Db;
-using Finder.Bot.Models.Data.Bot;
+using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules; 
 
 [Group("addons", "Command For Managing Addons")]
-public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
-    private readonly ICosmosDbService _cosmosDbService;
-    public AddonsModule(ICosmosDbService cosmosDbService) {
-        _cosmosDbService = cosmosDbService;
-    }
-    
+public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("list", "Lists the installed addons", runMode: RunMode.Async)]
     public async Task GetAddons() {
-        AddonsModel? value = await _cosmosDbService.GetItemAsync(Context.Guild.Id.ToString());
-        EmbedBuilder embed = new EmbedBuilder {
+        var addons = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
+        var embed = new EmbedBuilder {
             Title = "Addon list",
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
         };
-        if (value == null || value.Addons.Count == 0) {
-            foreach (object addon in Enum.GetValues(typeof(Enums.Addons))) {
+        foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
+            if (addons.TryGetValue((Enums.Addons)addon, out bool installed) && installed) {
+                embed.AddField(addon.ToString(), "Installed");
+            } else {
                 embed.AddField(addon.ToString(), "Not installed");
-            }
-        } else {
-            foreach (object addon in Enum.GetValues(typeof(Enums.Addons))) {
-                embed.AddField(addon.ToString(), value.Addons.Keys.Contains(addon.ToString()) && value.Addons.First(x => x.Key == addon.ToString()).Value ? "Installed" : "Not Installed");
             }
         }
         await RespondAsync(embed: embed.Build());
@@ -39,29 +31,20 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
             await RespondAsync("Error: Addon not found");
             return;
         }
-        AddonsModel? value = await _cosmosDbService.GetItemAsync(Context.Guild.Id.ToString());
-        if (value == null) {
-            await _cosmosDbService.AddItemAsync(new AddonsModel {
-                Id = Context.Guild.Id.ToString(),
-                Addons = new Dictionary<string, bool> {
-                    {addon, true}
-                }
-            });
-        } else if (value.Addons.ContainsKey(addon)) {
+        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
+        if (value.TryGetValue(addonEnum, out bool installed) && installed) {
             await RespondAsync("Error: Addon already installed");
             return;
-        } else {
-            value.Addons.Add(addon, true);
-            await _cosmosDbService.UpdateItemAsync(value.Id, value);
         }
+        await unitOfWork.Addons.UpdateAddonForGuildAsync(Context.Guild.Id, addonEnum, true);
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Installed",
-            Fields = new List<EmbedFieldBuilder> {
+            Fields = [
                 new() {
                     Name = "Addon",
                     Value = addon
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -74,21 +57,20 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
             await RespondAsync("Error: Addon not found");
             return;
         }
-        AddonsModel? value = await _cosmosDbService.GetItemAsync(Context.Guild.Id.ToString());
-        if (value == null || !value.Addons.ContainsKey(addon)) {
+        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
+        if (!value.TryGetValue(addonEnum, out bool installed) || !installed) {
             await RespondAsync("Error: Addon not installed");
             return;
         }
-        value.Addons.Remove(addon);
-        await _cosmosDbService.UpdateItemAsync(value.Id, value);
+        await unitOfWork.Addons.UpdateAddonForGuildAsync(Context.Guild.Id, addonEnum, false);
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Uninstalled",
-            Fields = new List<EmbedFieldBuilder> {
+            Fields = [
                 new() {
                     Name = "Addon",
                     Value = addon
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -96,17 +78,16 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
     }
 }
     
-public class AddonsInstallAutocompleteHandler : AutocompleteHandler {
-    private readonly ICosmosDbService _cosmosDbService;
-    public AddonsInstallAutocompleteHandler(ICosmosDbService cosmosDbService) {
-        _cosmosDbService = cosmosDbService;
-    }
+public class AddonsInstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        List<AutocompleteResult> results = new List<AutocompleteResult>();
-        foreach (object addon in Enum.GetValues(typeof(Enums.Addons))) {
-            AddonsModel? value = await _cosmosDbService.GetItemAsync(context.Guild.Id.ToString());
-            if (value == null || !value.Addons.Keys.Contains(addon.ToString()) || !value.Addons.First(x => x.Key == addon.ToString()).Value) {
-                results.Add(new AutocompleteResult(addon.ToString(), addon.ToString()));
+        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(context.Guild.Id);
+        List<AutocompleteResult> results = [
+            .. Enum.GetValues<Enums.Addons>()
+                .Select(addon => new AutocompleteResult(addon.ToString(), addon.ToString()))
+        ];
+        foreach (var addon in value) {
+            if (value.TryGetValue(addon.Key, out bool installed) && installed) {
+                results.RemoveAll(r => r.Name == addon.Key.ToString());
             }
         }
         // max - 25 suggestions at a time (API limit)
@@ -114,19 +95,14 @@ public class AddonsInstallAutocompleteHandler : AutocompleteHandler {
     }
 }
     
-public class AddonsUninstallAutocompleteHandler : AutocompleteHandler {
-    private readonly ICosmosDbService _cosmosDbService;
-    public AddonsUninstallAutocompleteHandler(ICosmosDbService cosmosDbService) {
-        _cosmosDbService = cosmosDbService;
-    }
+public class AddonsUninstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        List<AutocompleteResult> results = new List<AutocompleteResult>();
-        foreach (object addon in Enum.GetValues(typeof(Enums.Addons))) {
-            AddonsModel? value = await _cosmosDbService.GetItemAsync(context.Guild.Id.ToString());
-            if (value != null && value.Addons.Keys.Contains(addon.ToString()) && value.Addons.First(x => x.Key == addon.ToString()).Value) {
-                results.Add(new AutocompleteResult(addon.ToString(), addon.ToString()));
-            }
-        }
+        var value = await unitOfWork.Addons.GetAddonsForGuildAsync(context.Guild.Id);
+        List<AutocompleteResult> results = [
+            .. from addon in value
+            where value.TryGetValue(addon.Key, out bool installed) && installed
+            select new AutocompleteResult(addon.Key.ToString(), addon.Key.ToString())
+        ];
         // max - 25 suggestions at a time (API limit)
         return AutocompletionResult.FromSuccess(results.Take(25));
     }

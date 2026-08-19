@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
-namespace Finder.Bot.Models.Data.Bot;
+namespace Finder.Bot.Models.Data;
 
 public class PollsModel {
     [Key]
-    public Int64 MessageId { get; set; }
+    public Int64 Id { get; set; } // message Id
     public List<string> Answers { get; set; } = new();
     public List<Int64> VotersId { get; set; } = new();
 }

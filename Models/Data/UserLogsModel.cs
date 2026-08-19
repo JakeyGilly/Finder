@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-namespace Finder.Bot.Models.Data.Bot;
+namespace Finder.Bot.Models.Data;
 
 public class UserLogsModel {
     [Key]

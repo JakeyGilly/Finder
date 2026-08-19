@@ -1,14 +1,11 @@
-﻿namespace Finder.Bot.Db.Repositories.Tickets;
+﻿using Finder.Bot.Db.Exceptions;
+using Finder.Bot.Models.Data;
+using Microsoft.Azure.Cosmos;
 
-public class TicketsRepository(ICosmosDbService cosmosDbService) : ITicketsRepository
-{
-    private readonly ICosmosDbService _cosmosDbService = cosmosDbService;
+namespace Finder.Bot.Db.Repositories.Tickets;
 
-    // public async Task<bool> AddonEnabled(ulong guildId, string addonName) {
-    //     var addonData = await _cosmosDbService.GetItemAsync(guildId.ToString());
-    //     
-    //     return addonData != null && 
-    //            addonData.Addons.TryGetValue(addonName, out bool enabled) && 
-    //            enabled;
-    // }
+public class TicketsRepository(CosmosClient dbClient, string databaseName) : CosmosRepository<TicketsModel>(dbClient, databaseName, "tickets"), ITicketsRepository {
+    public async Task<TicketsModel> GetTicketAsync(ulong channelId) {
+        return await GetItemAsync(channelId.ToString()) ?? throw new EntityNotFoundException<TicketsModel>(channelId);
+    }
 }
