@@ -6,6 +6,6 @@ public class ItemInvModel {
     public Int64 GuildId { get; set; }
     [Key]
     public Int64 UserId { get; set; }
-    public List<Guid> ItemIds { get; set; } = new List<Guid>();
+    public List<Guid> ItemIds { get; set; } = new();
 
 }

@@ -1,85 +1,60 @@
-using Discord;
-using Discord.Interactions;
-using Discord.WebSocket;
-using Finder.Bot.Repositories;
-using Pathoschild.NaturalTimeParser.Parser;
-using System.Text;
-
-namespace Finder.Bot.Modules; 
-
-public class CountdownModule : InteractionModuleBase<ShardedInteractionContext> {
-    private readonly IUnitOfWork _unitOfWork;
-    public CountdownModule(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
-    [SlashCommand("countdown", "Countdown to a specific date or time", runMode: RunMode.Async)]
-    public async Task CountdownCommand(string datetime, IMentionable? ping = null) {
-        DateTime date;
-        try {
-            date = DateTime.Now.Offset(datetime);
-        } catch (TimeParseFormatException) {
-            await RespondAsync("Invalid date or time");
-            return;
-        }
-        var timeLeft = date - DateTime.Now;
-        if (timeLeft.TotalSeconds < 0) {
-            await RespondAsync("Date or time is in the past");
-            return;
-        }
-        if (timeLeft.TotalDays > 365) {
-            await RespondAsync("The date or time is too far in the future");
-            return;
-        }
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Countdown",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "Time left",
-                    Value = $"{timeLeft} left"
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var messages = await GetOriginalResponseAsync();
-        if (ping != null) {
-            switch(ping) {
-                case SocketRole role:
-                    await _unitOfWork.Countdown.AddCountdownAsync(messages.Id, Context.Channel.Id, Context.Guild.Id, date.ToUniversalTime(), null, role.Id);
-                    break;
-                case SocketGuildUser user:
-                    await _unitOfWork.Countdown.AddCountdownAsync(messages.Id, Context.Channel.Id, Context.Guild.Id, date.ToUniversalTime(), user.Id, null);
-                    break;
-                default:
-                    await RespondAsync("Invalid mention");
-                    break;
-            }
-        } else {
-            await _unitOfWork.Countdown.AddCountdownAsync(messages.Id, Context.Channel.Id, Context.Guild.Id, date.ToUniversalTime(), null, null);
-        }
-        await _unitOfWork.SaveChangesAsync();
-    }
-
-    public static string HumanizeTime(TimeSpan time) {
-        var sb = new StringBuilder();
-        switch(time) {
-            case { Days: > 0 }:
-                sb.Append($"{time.Days} {(time.Days == 1 ? "day" : "days")}");
-                break;
-            case { Hours: > 0 }:
-                if (sb.Length != 0) sb.Append(", ");
-                sb.Append($"{time.Hours} {(time.Hours == 1 ? "hour" : "hours")}");
-                break;
-            case { Minutes: > 0 }:
-                if (sb.Length != 0) sb.Append(", ");
-                sb.Append($"{time.Minutes} {(time.Minutes == 1 ? "minute" : "minutes")}");
-                break;
-            case { Seconds: > 0 }:
-                if (sb.Length != 0) sb.Append(", ");
-                sb.Append($"{time.Seconds} {(time.Seconds == 1 ? "second" : "seconds")}");
-                break;
-        }
-        return sb.ToString();
-    }
-}
+// using Discord;
+// using Discord.Interactions;
+// using Discord.WebSocket;
+// using Finder.Bot.Repositories;
+// using Pathoschild.NaturalTimeParser.Parser;
+// namespace Finder.Bot.Modules; 
+//
+// public class CountdownModule : InteractionModuleBase<ShardedInteractionContext> {
+//     private readonly IUnitOfWork _unitOfWork;
+//     public CountdownModule(IUnitOfWork unitOfWork) {
+//         _unitOfWork = unitOfWork;
+//     }
+//     [SlashCommand("countdown", "Countdown to a specific date or time", runMode: RunMode.Async)]
+//     public async Task CountdownCommand(int datetime, IMentionable? ping = null) {
+//         long date;
+//         try {
+//             // date = DateTimeOffset.Parse(datetime).ToUnixTimeSeconds();
+//             date = datetime;
+//         } catch (TimeParseFormatException) {
+//             await RespondAsync("Invalid date or time");
+//             return;
+//         }
+//         if (date < DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
+//             await RespondAsync("Date or time is in the past");
+//             return;
+//         }
+//         if (date > DateTimeOffset.UtcNow.AddYears(1).ToUnixTimeSeconds()) {
+//             await RespondAsync("The date or time is too far in the future");
+//             return;
+//         }
+//         await RespondAsync(embed: new EmbedBuilder {
+//             Title = "Countdown",
+//             Fields = new List<EmbedFieldBuilder> {
+//                 new() {
+//                     Name = "Countdown ends in",
+//                     Value = $"<t:{date}:R>",
+//                 },
+//             },
+//             Footer = new EmbedFooterBuilder {
+//                 Text = "FinderBot"
+//             }
+//         }.Build());
+//         if (ping != null) {
+//             switch(ping) {
+//                 case SocketRole role:
+//                     await _unitOfWork.Countdown.AddCountdownAsync(Context.Channel.Id, Context.Guild.Id, date, null, role.Id);
+//                     break;
+//                 case SocketGuildUser user:
+//                     await _unitOfWork.Countdown.AddCountdownAsync(Context.Channel.Id, Context.Guild.Id, date, user.Id);
+//                     break;
+//                 default:
+//                     await RespondAsync("Invalid mention");
+//                     break;
+//             }
+//         } else {
+//             await _unitOfWork.Countdown.AddCountdownAsync(Context.Channel.Id, Context.Guild.Id, date);
+//         }
+//         await _unitOfWork.SaveChangesAsync();
+//     }
+// }

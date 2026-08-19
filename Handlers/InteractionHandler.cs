@@ -1,21 +1,22 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using System.Reflection;
+using Newtonsoft.Json;
 
 namespace Finder.Bot.Handlers; 
 
-public class CommandHandler {
+public class InteractionHandler {
     private readonly InteractionService commands;
     private readonly DiscordShardedClient client;
     private readonly IServiceProvider services;
-    public CommandHandler(InteractionService _commands, DiscordShardedClient _client,  IServiceProvider _services) {
+    public InteractionHandler(InteractionService _commands, DiscordShardedClient _client, IServiceProvider _services) {
         commands = _commands;
         client = _client;
         services = _services;
     }
 
-    public async Task Initialize() {
-        await commands.AddModulesAsync(Assembly.GetExecutingAssembly(), services);
+    public async Task InitializeAsync() {
+        await commands.AddModulesAsync(typeof(InteractionHandler).Assembly, services);
         client.InteractionCreated += InteractionCreated;
         client.ButtonExecuted += ButtonExecuted;
         client.ShardReady += ShardReady;
@@ -37,11 +38,15 @@ public class CommandHandler {
 
     private async Task ShardReady(DiscordSocketClient arg) {
         await RegisterCommands();
-        client.ShardReady -= ShardReady;
     }
 
     private async Task InteractionCreated(SocketInteraction arg) {
-        await commands.ExecuteCommandAsync(new ShardedInteractionContext(client, arg), services);
+        _ = Task.Run(async () =>
+        {
+            var context = new ShardedInteractionContext(client, arg);
+            await commands.ExecuteCommandAsync(context, services);
+        });
+        await Task.CompletedTask;
     }
 
     private async Task RegisterCommands() {

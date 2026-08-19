@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Finder.Bot.Db.Repositories;
 using Finder.Bot.Models.Data.Bot;
 using Finder.Bot.Repositories;
 
@@ -8,24 +9,22 @@ namespace Finder.Bot.Modules.Addons;
 
 public class TicketingModule {
     [Group("tickets", "Command For Managing Tickets")]
-    public class TicketsModule : InteractionModuleBase<ShardedInteractionContext> {
+    public class TicketsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext>
+    {
         ulong closeConfirmId;
-        private readonly IUnitOfWork _unitOfWork;
-        public TicketsModule(IUnitOfWork unitOfWork) {
-            _unitOfWork = unitOfWork;
-        }
+
         [SlashCommand("create", "Creates a ticket", runMode: RunMode.Async)]
         public async Task CreateTicket(string? name = null) {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
-                    Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                    Fields = [
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
-                    }
+                    ]
                 }.Build());
                 return;
             }
@@ -39,22 +38,23 @@ public class TicketingModule {
             }
             var supportChannel = await Context.Guild.CreateTextChannelAsync($"ticket-{name}", x => {
                 x.PermissionOverwrites = new List<Overwrite> {
-                    new Overwrite(Context.Guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(readMessageHistory: PermValue.Deny, sendMessages: PermValue.Deny, viewChannel: PermValue.Deny)),
-                    new Overwrite(Context.User.Id, PermissionTarget.User, new OverwritePermissions(addReactions: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, readMessageHistory: PermValue.Allow, sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, useApplicationCommands: PermValue.Allow))
+                    new(Context.Guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(readMessageHistory: PermValue.Deny, sendMessages: PermValue.Deny, viewChannel: PermValue.Deny)),
+                    new(Context.User.Id, PermissionTarget.User, new OverwritePermissions(addReactions: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, readMessageHistory: PermValue.Allow, sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, useApplicationCommands: PermValue.Allow))
                 };
             });
             var message = await supportChannel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "Ticket",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = name,
                         Value = $"Channel made by {Context.User.Username}"
                     }
-                }
+                ]
             }.Build(), components: new ComponentBuilder { 
-                ActionRows = new List<ActionRowBuilder> {
-                    new ActionRowBuilder {
-                        Components = new List<IMessageComponent> {
+                ActionRows = [
+                    new() {
+                        Components = new List<IMessageComponent>
+                        {
                             new ButtonBuilder {
                                 CustomId = "close",
                                 Label = "Close Ticket"
@@ -65,29 +65,29 @@ public class TicketingModule {
                             }.Build()
                         }
                     }
-                }
+                ]
             }.Build());
-            await _unitOfWork.Tickets.AddTicketAsync(Context.Guild.Id, supportChannel.Id, message.Id, new List<long?> { (long)Context.User.Id }, name, new List<long>());
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.AddTicketAsync(Context.Guild.Id, supportChannel.Id, message.Id, new List<long?> { (long)Context.User.Id }, name, new List<long>());
+            await unitOfWork.SaveChangesAsync();
             await RespondAsync(embed: new EmbedBuilder {
                 Title = "Ticket Created",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "Opened a new ticket:",
                         Value = supportChannel.Mention
                     }
-                }
+                ]
             }.Build());
         }
 
         [SlashCommand("close", "Closes a ticket", runMode: RunMode.Async)]
         public async Task CloseTicket() {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
                     Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
@@ -95,7 +95,7 @@ public class TicketingModule {
                 }.Build());
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket?.IntroMessageId == null 
                 || await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
@@ -107,22 +107,22 @@ public class TicketingModule {
             }
             await RespondAsync("Ticket Closed");
             await ((SocketGuildChannel)Context.Channel).DeleteAsync();
-            _unitOfWork.Tickets.Remove(ticket);
-            await _unitOfWork.SaveChangesAsync();
+            unitOfWork.Tickets.Remove(ticket);
+            await unitOfWork.SaveChangesAsync();
         }
 
         [SlashCommand("claim", "Claims a ticket", runMode: RunMode.Async)]
         public async Task ClaimTicket() {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
-                    Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                    Fields = [
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
-                    }
+                    ]
                 }.Build());
                 return;
             }
@@ -130,7 +130,7 @@ public class TicketingModule {
                 await RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket?.IntroMessageId == null
                 || await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
@@ -149,16 +149,16 @@ public class TicketingModule {
                 viewChannel: PermValue.Allow,
                 useApplicationCommands: PermValue.Allow
             ));
-            await _unitOfWork.Tickets.AddTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.AddTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
+            await unitOfWork.SaveChangesAsync();
             await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "Ticket Claimed",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "Claimed By",
                         Value = Context.User.Username
                     }
-                }
+                ]
             }.Build());
             await RespondAsync("You have claimed this ticket.", ephemeral: true);
 
@@ -166,12 +166,12 @@ public class TicketingModule {
 
         [SlashCommand("unclaim", "Unclaims a ticket", runMode: RunMode.Async)]
         public async Task UnclaimTicket() {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
                     Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
@@ -179,7 +179,7 @@ public class TicketingModule {
                 }.Build());
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket?.IntroMessageId == null ||
                 await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
@@ -190,28 +190,28 @@ public class TicketingModule {
                 return;
             }
             await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(Context.User);
-            await _unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
+            await unitOfWork.SaveChangesAsync();
             await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "Ticket Unclaimed",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "User",
                         Value = Context.User.Username
                     }
-                }
+                ]
             }.Build());
             await RespondAsync("You have unclaimed this ticket.", ephemeral: true);
         }
 
         [SlashCommand("adduser", "Adds a user to a ticket", runMode: RunMode.Async)]
         public async Task AddUserToTicket(IUser user) {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
                     Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
@@ -219,7 +219,7 @@ public class TicketingModule {
                 }.Build());
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket?.IntroMessageId == null || await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
                 return;
@@ -232,8 +232,8 @@ public class TicketingModule {
                 await RespondAsync("This user is already a member of this ticket.", ephemeral: true);
                 return;
             }
-            await _unitOfWork.Tickets.AddTicketUserIdAsync(Context.Channel.Id, user.Id);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.AddTicketUserIdAsync(Context.Channel.Id, user.Id);
+            await unitOfWork.SaveChangesAsync();
             await ((SocketGuildChannel)Context.Channel).AddPermissionOverwriteAsync(user, new OverwritePermissions(
                 addReactions: PermValue.Allow,
                 attachFiles: PermValue.Allow,
@@ -245,32 +245,32 @@ public class TicketingModule {
             ));
             await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "User Added",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "User",
                         Value = user.Username
                     }
-                }
+                ]
             }.Build());
             await RespondAsync("User added.", ephemeral: true);
         }
 
         [SlashCommand("removeuser", "Removes a user from a ticket", runMode: RunMode.Async)]
         public async Task RemoveUserFromTicket(IUser user) {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
-                    Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                    Fields = [
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
-                    }
+                    ]
                 }.Build());
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket.IntroMessageId == null || await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
                 return;
@@ -283,39 +283,39 @@ public class TicketingModule {
                 await RespondAsync("This user is not a member of this ticket.", ephemeral: true);
                 return;
             }
-            await _unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, user.Id);
-            await _unitOfWork.Tickets.RemoveTicketUserIdAsync(Context.Channel.Id, user.Id);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, user.Id);
+            await unitOfWork.Tickets.RemoveTicketUserIdAsync(Context.Channel.Id, user.Id);
+            await unitOfWork.SaveChangesAsync();
             await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(user);
             await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "User Removed",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "User",
                         Value = user.Username
                     }
-                }
+                ]
             }.Build());
             await RespondAsync("User removed.", ephemeral: true);
         }
 
         [SlashCommand("leave", "Leaves a ticket", runMode: RunMode.Async)]
         public async Task LeaveTicket() {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 await RespondAsync(embed: new EmbedBuilder {
                     Title = "Ticketing",
                     Description = "This addon is disabled on this server.",
                     Color = Color.Red,
-                    Fields = new List<EmbedFieldBuilder> {
-                        new EmbedFieldBuilder {
+                    Fields = [
+                        new() {
                             Name = "Enable",
                             Value = "Use `/addons install Ticketing` to enable this addon."
                         }
-                    }
+                    ]
                 }.Build());
                 return;
             }
-            var ticket = await _unitOfWork.Tickets.GetAsync(Context.Channel.Id);
+            var ticket = await unitOfWork.Tickets.GetAsync(Context.Channel.Id);
             if (ticket.IntroMessageId == null || await Context.Channel.GetMessageAsync((ulong)ticket.IntroMessageId) == null) {
                 await RespondAsync("You are not in a ticket channel.", ephemeral: true);
                 return;
@@ -324,34 +324,34 @@ public class TicketingModule {
                 await RespondAsync("You are not a member of this ticket.", ephemeral: true);
                 return;
             }
-            await _unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
-            await _unitOfWork.Tickets.RemoveTicketUserIdAsync(Context.Channel.Id, Context.User.Id);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Tickets.RemoveTicketClaimedUserIdAsync(Context.Channel.Id, Context.User.Id);
+            await unitOfWork.Tickets.RemoveTicketUserIdAsync(Context.Channel.Id, Context.User.Id);
+            await unitOfWork.SaveChangesAsync();
             await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = "User Removed",
-                Fields = new List<EmbedFieldBuilder> {
-                    new EmbedFieldBuilder {
+                Fields = [
+                    new() {
                         Name = "User",
                         Value = Context.User.Username
                     }
-                },
+                ],
                 Color = Color.Green
             }.Build());
             await RespondAsync("User removed.", ephemeral: true);
         }
 
         public async Task OnButtonExecutedEvent(SocketMessageComponent messageComponent) {
-            if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
+            if (!await unitOfWork.Addons.AddonEnabled(Context.Guild.Id, "Ticketing")) {
                 return;
             }
-            TicketsModel ticket = await _unitOfWork.Tickets.GetAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
+            TicketsModel ticket = await unitOfWork.Tickets.GetAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
             if (messageComponent.Message.Id == closeConfirmId) {
                 switch(messageComponent.Data.CustomId) {
                     case "close-yes":
                         await messageComponent.RespondAsync("Ticket Closed");
                         await ((SocketGuildChannel)messageComponent.Message.Channel).DeleteAsync();
-                        _unitOfWork.Tickets.Remove(ticket);
-                        await _unitOfWork.SaveChangesAsync();
+                        unitOfWork.Tickets.Remove(ticket);
+                        await unitOfWork.SaveChangesAsync();
                         break;
                     case "close-no":
                         await messageComponent.RespondAsync("You have cancelled closing this ticket.");
@@ -362,12 +362,12 @@ public class TicketingModule {
                     case "close":
                         await messageComponent.RespondAsync(embed: new EmbedBuilder {
                             Title = "Are you sure?",
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
+                            Fields = [
+                                new() {
                                     Name = "Close Ticket",
                                     Value = "This will close the ticket and delete the channel."
                                 }
-                            },
+                            ],
                             Color = Color.Red
                         }.Build(), components: new ComponentBuilder()
                             .WithButton("Yes", "close-yes")
@@ -379,7 +379,7 @@ public class TicketingModule {
                         await messageComponent.RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
                         return;
                     case "claim":
-                        var claimedUsers = await _unitOfWork.Tickets.GetAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
+                        var claimedUsers = await unitOfWork.Tickets.GetAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
                         if (claimedUsers.ClaimedUserId.Contains((long)((SocketGuildUser)messageComponent.User).Id)) {
                             await messageComponent.RespondAsync("You have already claimed this ticket.", ephemeral: true);
                             return;
@@ -393,12 +393,13 @@ public class TicketingModule {
                             viewChannel: PermValue.Allow,
                             useApplicationCommands: PermValue.Allow
                         ));
-                        await _unitOfWork.Tickets.AddTicketClaimedUserIdAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id, ((SocketGuildUser)messageComponent.User).Id);
-                        await _unitOfWork.SaveChangesAsync();
+                        await unitOfWork.Tickets.AddTicketClaimedUserIdAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id, ((SocketGuildUser)messageComponent.User).Id);
+                        await unitOfWork.SaveChangesAsync();
                         await messageComponent.Message.Channel.SendMessageAsync(embed: new EmbedBuilder {
                             Title = "Ticket Claimed",
                             Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
+                                new()
+                                {
                                     Name = "Claimed By",
                                     Value = ((SocketGuildUser)messageComponent.User).Username
                                 }

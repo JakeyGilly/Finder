@@ -2,7 +2,7 @@ using Finder.Bot.Enums;
 namespace Finder.Bot.Models;
 
 public class ItemsRoot {
-    public List<Items> Items { get; set; } = new List<Items>();
+    public List<Items> Items { get; set; } = new();
 }
 public class Items {
     public Guid Id { get; set; }

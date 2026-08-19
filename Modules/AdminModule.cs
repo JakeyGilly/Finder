@@ -31,17 +31,20 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Slowmode set",
             Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+                new()
+                {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new()
+                {
                     Name = "Slowmode",
                     Value = seconds.ToString(),
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new()
+                {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true
@@ -64,12 +67,14 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Channel locked down",
             Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+                new()
+                {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new()
+                {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true

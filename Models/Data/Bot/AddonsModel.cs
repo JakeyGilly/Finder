@@ -1,8 +1,10 @@
-using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json;
+
 namespace Finder.Bot.Models.Data.Bot;
 
 public class AddonsModel {
-    [Key]
-    public Int64 GuildId { get; set; }
-    public Dictionary<string, string> Addons { get; set; }
+    [JsonProperty(PropertyName = "id")]
+    public string Id { get; set; }
+    [JsonProperty(PropertyName = "addons")]
+    public Dictionary<string, bool> Addons { get; set; }
 }
