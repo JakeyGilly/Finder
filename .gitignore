@@ -4,3 +4,4 @@ obj/
 .vs/
 Migrations/
 docker-compose.yml
+appsettings.json

@@ -36,7 +36,7 @@ DB_NAME=$(get_conn_param "Database")
 
 DB_CONTAINER_NAME="$DB_NAME-postgres"
 
-# Check Docker
+# Check Docker availability
 if ! [ -x "$(command -v docker)" ]; then
   echo "Docker is not installed."
   exit 1
@@ -47,62 +47,67 @@ if ! docker info > /dev/null 2>&1; then
   exit 1
 fi
 
-# Check if container is already running or existing
-if [ "$(docker ps -q -f name=$DB_CONTAINER_NAME)" ]; then
+# Handle container lifecycle without premature exits
+if [ "$(docker ps -q -f name=^/${DB_CONTAINER_NAME}$)" ]; then
   echo "Database container '$DB_CONTAINER_NAME' is already running."
-  exit 0
-fi
-
-if [ "$(docker ps -q -a -f name=$DB_CONTAINER_NAME)" ]; then
-  docker start "$DB_CONTAINER_NAME"
-  echo "Existing container '$DB_CONTAINER_NAME' started."
-  exit 0
-fi
-
-# Check if host port is in use
-if command -v nc >/dev/null 2>&1; then
-  if nc -z localhost "$DB_PORT" 2>/dev/null; then
-    echo "Error: Port $DB_PORT is already in use."
-    exit 1
-  fi
-fi
-
-# Auto-generate password if default is detected
-if [ "$DB_PASSWORD" = "password" ] || [ "$DB_PASSWORD" = "yourpassword" ]; then
-  echo "Default password detected in appsettings.json."
-  read -p "Generate a random secure password and update appsettings.json? [Y/n]: " -r REPLY
-  REPLY=${REPLY:-Y}
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    NEW_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
-    if [[ "$(uname)" == "Darwin" ]]; then
-      sed -i '' "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
-    else
-      sed -i "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
+elif [ "$(docker ps -q -a -f name=^/${DB_CONTAINER_NAME}$)" ]; then
+  echo "Starting existing container '$DB_CONTAINER_NAME'..."
+  docker start "$DB_CONTAINER_NAME" > /dev/null
+else
+  # Check if host port is in use before creating container
+  if command -v nc >/dev/null 2>&1; then
+    if nc -z localhost "$DB_PORT" 2>/dev/null; then
+      echo "Error: Port $DB_PORT is already in use."
+      exit 1
     fi
-    DB_PASSWORD=$NEW_PASSWORD
-    echo "Updated appsettings.json with new password."
   fi
+
+  # Auto-generate password if default is detected
+  if [ "$DB_PASSWORD" = "password" ] || [ "$DB_PASSWORD" = "yourpassword" ]; then
+    echo "Default password detected in appsettings.json."
+    read -p "Generate a random secure password and update appsettings.json? [Y/n]: " -r REPLY
+    REPLY=${REPLY:-Y}
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      NEW_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
+      if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i '' "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
+      else
+        sed -i "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
+      fi
+      DB_PASSWORD=$NEW_PASSWORD
+      echo "Updated appsettings.json with new password."
+    fi
+  fi
+
+  # Spin up PostgreSQL container
+  docker run -d \
+    --name "$DB_CONTAINER_NAME" \
+    -e POSTGRES_USER="$DB_USER" \
+    -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+    -e POSTGRES_DB="$DB_NAME" \
+    -p "$DB_PORT":5432 \
+    postgres:16-alpine > /dev/null
+  echo "Container '$DB_CONTAINER_NAME' created."
 fi
 
-# Spin up PostgreSQL container
-docker run -d \
-  --name "$DB_CONTAINER_NAME" \
-  -e POSTGRES_USER="$DB_USER" \
-  -e POSTGRES_PASSWORD="$DB_PASSWORD" \
-  -e POSTGRES_DB="$DB_NAME" \
-  -p "$DB_PORT":5432 \
-  postgres:16-alpine && echo "Container '$DB_CONTAINER_NAME' created."
-
-# Wait for PostgreSQL to complete initialization
-echo "Waiting for PostgreSQL to ready..."
+# Wait for PostgreSQL readiness
+echo "Waiting for PostgreSQL to be ready..."
 until docker exec "$DB_CONTAINER_NAME" pg_isready -U "$DB_USER" -d "$DB_NAME" > /dev/null 2>&1; do
   sleep 1
 done
 
 # Run EF Core migrations
-if command -v dotnet-ef >/dev/null 2>&1 || dotnet tool list -g | grep -q "dotnet-ef"; then
-  echo "Applying EF Core migrations..."
-  dotnet ef database update --project Finder.Bot
+echo "Applying EF Core migrations..."
+if dotnet ef --version >/dev/null 2>&1; then
+  dotnet ef database update 2>&1 | grep -v "Failed executing DbCommand"
+elif [ -f ".config/dotnet-tools.json" ]; then
+  echo "Restoring local dotnet tools..."
+  dotnet tool restore
+  dotnet ef database update 2>&1 | grep -v "Failed executing DbCommand"
+else
+  echo "Error: 'dotnet-ef' is not installed or available on PATH."
+  echo "Run 'dotnet tool install --global dotnet-ef' to enable automatic database migrations."
+  exit 1
 fi
 
 echo "Database is online and migrations applied!"

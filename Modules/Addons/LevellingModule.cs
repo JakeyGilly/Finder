@@ -41,15 +41,14 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         var userId = message.Author.Id;
         if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(guildId, Enums.Addons.Levelling)) return;
         if (message.Author.IsBot) return;
-        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id) ?? new LevellingModel {
-            GuildId = Context.Guild.Id,
-            UserId = Context.User.Id,
+        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == guildId && m.UserId == userId) ?? new LevellingModel {
+            GuildId = guildId,
+            UserId = userId,
             Level = 0,
             Exp = 0
         };
-        var expToGet = 50 * (int)Math.Pow(1.5, levels.Level + 1);
-        if (++levels.Exp > expToGet)
-        {
+        var expToGet = (int)(50 * (levels.Level + 1) * Math.Sqrt(levels.Level + 1))/2;
+        if (++levels.Exp > expToGet) {
             levels.Level++;
             levels.Exp = 0;
             await unitOfWork.Levelling.UpsertItemAsync((m) => m.GuildId == guildId && m.UserId == userId, levels);

@@ -18,7 +18,7 @@ class Program {
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
         
-        await using ServiceProvider services = ConfigureServices(configuration.GetSection("CosmosDb"));
+        await using ServiceProvider services = ConfigureServices(configuration);
         DiscordShardedClient client = services.GetRequiredService<DiscordShardedClient>();
         InteractionService commands = services.GetRequiredService<InteractionService>();
         InteractionHandler handler = services.GetRequiredService<InteractionHandler>();
@@ -41,10 +41,9 @@ class Program {
         GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.GuildEmojis
     };
     
-    private static ServiceProvider ConfigureServices(IConfigurationSection configurationSection) {
-        string dbName = configurationSection.GetSection("DatabaseName").Value!;
+    private static ServiceProvider ConfigureServices(IConfiguration configuration) {
         return new ServiceCollection()
-            .AddDbContext<BotDbContext>(options => options.UseNpgsql(configurationSection.GetConnectionString("PostgreSQL")))
+            .AddDbContext<BotDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")))
             .AddScoped<IUnitOfWork, UnitOfWork>()
             .AddSingleton<DiscordShardedClient>(x => new DiscordShardedClient(discordConfig))
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
