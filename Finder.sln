@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Finder.Bot", "Finder.Bot\Finder.Bot.csproj", "{DE5C3395-B0EF-4190-A9D4-EAE9F59503F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Finder.ItemCreator", "Finder.ItemCreator\Finder.ItemCreator.csproj", "{10160C1F-937E-4673-947A-015AA5264949}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Finder.Web", "Finder.Web\Finder.Web.csproj", "{B18BCB07-9FDB-486E-9FCF-A56AD82AA7A1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DE5C3395-B0EF-4190-A9D4-EAE9F59503F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE5C3395-B0EF-4190-A9D4-EAE9F59503F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE5C3395-B0EF-4190-A9D4-EAE9F59503F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE5C3395-B0EF-4190-A9D4-EAE9F59503F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10160C1F-937E-4673-947A-015AA5264949}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10160C1F-937E-4673-947A-015AA5264949}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10160C1F-937E-4673-947A-015AA5264949}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10160C1F-937E-4673-947A-015AA5264949}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B18BCB07-9FDB-486E-9FCF-A56AD82AA7A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B18BCB07-9FDB-486E-9FCF-A56AD82AA7A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B18BCB07-9FDB-486E-9FCF-A56AD82AA7A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B18BCB07-9FDB-486E-9FCF-A56AD82AA7A1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
