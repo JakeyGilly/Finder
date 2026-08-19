@@ -1,0 +1,9 @@
+[submodule "Finder.Bot"]
+	path = Finder.Bot
+	url = https://github.com/JakeyGilly/Finder.Bot
+[submodule "Finder.Web"]
+	path = Finder.Web
+	url = https://github.com/JakeyGilly/Finder.Web
+[submodule "Finder.ItemCreator"]
+	path = Finder.ItemCreator
+	url = https://github.com/JakeyGilly/Finder.ItemCreator
