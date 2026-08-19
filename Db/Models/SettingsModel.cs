@@ -1,6 +1,7 @@
 namespace Finder.Bot.Db.Models;
 
 public class SettingsModel {
-    public string GuildId { get; set; } // pk
-    public Dictionary<string, string> Settings { get; set; }
+    public string GuildId { get; set; } // composite key
+    public string Setting { get; set; } // composite key
+    public string Value { get; set; }
 }

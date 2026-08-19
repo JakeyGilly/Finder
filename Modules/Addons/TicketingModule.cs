@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
+using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules.Addons; 
@@ -48,9 +49,10 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             ChannelId = supportChannel.Id,
             GuildId = Context.Guild.Id,
             IntroMessageId = message.Id,
-            UserIds = [Context.User.Id],
+            Users = [
+                new() { UserId = Context.User.Id, TicketChannelId = supportChannel.Id }
+            ],
             Name = name,
-            ClaimedUserId = []
         });
         await unitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
@@ -75,7 +77,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (!ticket.UserIds.Contains(Context.User.Id) || !ticket.ClaimedUserId.Contains(Context.User.Id)) {
+        if (!ticket.Users.Any(x => x.UserId == Context.User.Id) && !ticket.Claimers.Any(x => x.UserId == Context.User.Id)) {
             await RespondAsync("You are not the owner of this ticket.", ephemeral: true);
             return;
         }
@@ -100,7 +102,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (ticket.ClaimedUserId.Contains(Context.User.Id)) {
+        if (ticket.Claimers.Any(x => x.UserId == Context.User.Id)) {
             await RespondAsync("You have already claimed this ticket.", ephemeral: true);
             return;
         }
@@ -113,7 +115,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             viewChannel: PermValue.Allow,
             useApplicationCommands: PermValue.Allow
         ));
-        ticket.ClaimedUserId.Add(Context.User.Id);
+        ticket.Claimers.Add(new() { UserId = Context.User.Id, TicketChannelId = ticket.ChannelId });
         await unitOfWork.SaveChangesAsync();
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "Ticket Claimed",
@@ -138,12 +140,12 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (!ticket.ClaimedUserId.Contains(Context.User.Id)) {
+        if (!ticket.Claimers.Any(x => x.UserId == Context.User.Id)) {
             await RespondAsync("You have not claimed this ticket.", ephemeral: true);
             return;
         }
         await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(Context.User);
-        ticket.ClaimedUserId.Remove(Context.User.Id);
+        ticket.Claimers.Remove(ticket.Claimers.First(x => x.UserId == Context.User.Id));
         await unitOfWork.SaveChangesAsync();
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "Ticket Unclaimed",
@@ -168,15 +170,15 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (!(ticket.UserIds.Contains(Context.User.Id) || ticket.ClaimedUserId.Contains(Context.User.Id))) {
+        if (!ticket.Users.Any(x => x.UserId == Context.User.Id) && !ticket.Claimers.Any(x => x.UserId == Context.User.Id)) {
             await RespondAsync("You are not a member of this ticket.", ephemeral: true);
             return;
         }
-        if (ticket.UserIds.Contains(user.Id) || ticket.ClaimedUserId.Contains(user.Id)) {
+        if (ticket.Users.Any(x => x.UserId == user.Id) || ticket.Claimers.Any(x => x.UserId == user.Id)) {
             await RespondAsync("This user is already a member of this ticket.", ephemeral: true);
             return;
         }
-        ticket.UserIds.Add(Context.User.Id);
+        ticket.Users.Add(new () { UserId = user.Id, TicketChannelId = ticket.ChannelId });
         await unitOfWork.SaveChangesAsync();
         await ((SocketGuildChannel)Context.Channel).AddPermissionOverwriteAsync(user, new OverwritePermissions(
             addReactions: PermValue.Allow,
@@ -210,16 +212,16 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (!(ticket.UserIds.Contains(Context.User.Id) || ticket.ClaimedUserId.Contains(Context.User.Id))) {
+        if (!(ticket.Users.Any(x => x.UserId == Context.User.Id) || ticket.Claimers.Any(x => x.UserId == Context.User.Id))) {
             await RespondAsync("You are not a member of this ticket.", ephemeral: true);
             return;
         }
-        if (!(ticket.UserIds.Contains(user.Id) || ticket.ClaimedUserId.Contains(user.Id))) {
+        if (!(ticket.Users.Any(x => x.UserId == user.Id) || ticket.Claimers.Any(x => x.UserId == user.Id))) {
             await RespondAsync("This user is not a member of this ticket.", ephemeral: true);
             return;
         }
-        ticket.UserIds.Remove(user.Id);
-        ticket.ClaimedUserId.Remove(user.Id);
+        ticket.Users.Remove(ticket.Users.First(x => x.UserId == user.Id));
+        ticket.Claimers.Remove(ticket.Claimers.First(x => x.UserId == user.Id));
         await unitOfWork.SaveChangesAsync();
         await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(user);
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
@@ -245,12 +247,12 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You are not in a ticket channel.", ephemeral: true);
             return;
         }
-        if (!(ticket.UserIds.Contains(Context.User.Id) || ticket.ClaimedUserId.Contains(Context.User.Id))) {
+        if (!(ticket.Users.Any(x => x.UserId == Context.User.Id) || ticket.Claimers.Any(x => x.UserId == Context.User.Id))) {
             await RespondAsync("You are not a member of this ticket.", ephemeral: true);
             return;
         }
-        ticket.UserIds.Remove(Context.User.Id);
-        ticket.ClaimedUserId.Remove(Context.User.Id);
+        ticket.Users.Remove(ticket.Users.First(x => x.UserId == Context.User.Id));
+        ticket.Claimers.Remove(ticket.Claimers.First(x => x.UserId == Context.User.Id));
         await unitOfWork.SaveChangesAsync();
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "User Removed",
@@ -307,7 +309,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                     await messageComponent.RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
                     return;
                 case "claim":
-                    if (ticket.ClaimedUserId.Contains(((SocketGuildUser)messageComponent.User).Id)) {
+                    if (ticket.Claimers.Any(x => x.UserId == ((SocketGuildUser)messageComponent.User).Id)) {
                         await messageComponent.RespondAsync("You have already claimed this ticket.", ephemeral: true);
                         return;
                     }
@@ -320,7 +322,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                         viewChannel: PermValue.Allow,
                         useApplicationCommands: PermValue.Allow
                     ));
-                    ticket.ClaimedUserId.Add(((SocketGuildUser)messageComponent.User).Id);
+                    ticket.Claimers.Add(new() { UserId = ((SocketGuildUser)messageComponent.User).Id, TicketChannelId = ticket.ChannelId });
                     await messageComponent.Message.Channel.SendMessageAsync(embed: new EmbedBuilder {
                         Title = "Ticket Claimed",
                         Fields = [
