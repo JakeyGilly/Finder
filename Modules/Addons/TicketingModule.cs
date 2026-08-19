@@ -2,16 +2,15 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Exceptions;
+using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
-using Finder.Bot.Models.Data;
 
 namespace Finder.Bot.Modules.Addons; 
 
 [RequireAddon(Enums.Addons.Ticketing)]
 [Group("tickets", "Command For Managing Tickets")]
 public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
-    ulong closeConfirmId;
+    private ulong _closeConfirmId;
 
     [SlashCommand("create", "Creates a ticket", runMode: RunMode.Async)]
     public async Task CreateTicket(string name) {
@@ -47,7 +46,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             ]
         }.Build());
         await unitOfWork.Ticketing.AddItemAsync(new TicketsModel() {
-            Id = supportChannel.Id.ToString(),
+            ChannelId = supportChannel.Id,
             GuildId = Context.Guild.Id,
             IntroMessageId = message.Id,
             UserIds = [Context.User.Id],
@@ -67,10 +66,8 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("close", "Closes a ticket", runMode: RunMode.Async)]
     public async Task CloseTicket() {
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -84,7 +81,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         }
         await RespondAsync("Ticket Closed");
         await ((SocketGuildChannel)Context.Channel).DeleteAsync();
-        await unitOfWork.Ticketing.DeleteItemAsync(ticket.Id);
+        await unitOfWork.Ticketing.DeleteItemAsync((m) => m.ChannelId == ticket.ChannelId);
     }
 
     [SlashCommand("claim", "Claims a ticket", runMode: RunMode.Async)]
@@ -93,10 +90,8 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
             return;
         }
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -118,7 +113,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             useApplicationCommands: PermValue.Allow
         ));
         ticket.ClaimedUserId.Add(Context.User.Id);
-        await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+        await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "Ticket Claimed",
             Fields = [
@@ -133,10 +128,8 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("unclaim", "Unclaims a ticket", runMode: RunMode.Async)]
     public async Task UnclaimTicket() {
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -150,7 +143,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         }
         await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(Context.User);
         ticket.ClaimedUserId.Remove(Context.User.Id);
-        await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+        await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "Ticket Unclaimed",
             Fields = [
@@ -165,10 +158,8 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("adduser", "Adds a user to a ticket", runMode: RunMode.Async)]
     public async Task AddUserToTicket(IUser user) {
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -185,7 +176,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             return;
         }
         ticket.UserIds.Add(Context.User.Id);
-        await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+        await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
         await ((SocketGuildChannel)Context.Channel).AddPermissionOverwriteAsync(user, new OverwritePermissions(
             addReactions: PermValue.Allow,
             attachFiles: PermValue.Allow,
@@ -208,12 +199,9 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
     }
 
     [SlashCommand("removeuser", "Removes a user from a ticket", runMode: RunMode.Async)]
-    public async Task RemoveUserFromTicket(IUser user)
-    {
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+    public async Task RemoveUserFromTicket(IUser user) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -231,7 +219,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         }
         ticket.UserIds.Remove(user.Id);
         ticket.ClaimedUserId.Remove(user.Id);
-        await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+        await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
         await ((SocketGuildChannel)Context.Channel).RemovePermissionOverwriteAsync(user);
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "User Removed",
@@ -247,10 +235,8 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("leave", "Leaves a ticket", runMode: RunMode.Async)]
     public async Task LeaveTicket() {
-        TicketsModel ticket;
-        try {
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(Context.Channel.Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
@@ -264,7 +250,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         }
         ticket.UserIds.Remove(Context.User.Id);
         ticket.ClaimedUserId.Remove(Context.User.Id);
-        await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+        await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
         await Context.Channel.SendMessageAsync(embed: new EmbedBuilder {
             Title = "User Removed",
             Fields = [
@@ -282,20 +268,17 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(Context.Guild.Id, Enums.Addons.Ticketing)) {
             return;
         }
-
-        TicketsModel ticket;
-        try { 
-            ticket = await unitOfWork.Ticketing.GetTicketAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
-        } catch (EntityNotFoundException<TicketsModel>) {
+        TicketsModel? ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == ((SocketGuildChannel)messageComponent.Message.Channel).Id);
+        if (ticket == null) {
             await messageComponent.RespondAsync("Ticket not found.", ephemeral: true);
             return;
         }
-        if (messageComponent.Message.Id == closeConfirmId) {
+        if (messageComponent.Message.Id == _closeConfirmId) {
             switch(messageComponent.Data.CustomId) {
                 case "close-yes":
                     await messageComponent.RespondAsync("Ticket Closed");
                     await ((SocketGuildChannel)messageComponent.Message.Channel).DeleteAsync();
-                    await unitOfWork.Ticketing.DeleteItemAsync(ticket.Id);
+                    await unitOfWork.Ticketing.DeleteItemAsync((m) => m.ChannelId == ticket.ChannelId);
                     break;
                 case "close-no":
                     await messageComponent.RespondAsync("You have cancelled closing this ticket.");
@@ -317,14 +300,13 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                         .WithButton("Yes", "close-yes")
                         .WithButton("No", "close-no")
                         .Build());
-                    closeConfirmId = (await messageComponent.GetOriginalResponseAsync()).Id;
+                    _closeConfirmId = (await messageComponent.GetOriginalResponseAsync()).Id;
                     return;
                 case "claim" when !((SocketGuildUser)messageComponent.User).GuildPermissions.Administrator:
                     await messageComponent.RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
                     return;
                 case "claim":
-                    var claimedUsers = await unitOfWork.Ticketing.GetTicketAsync(((SocketGuildChannel)messageComponent.Message.Channel).Id);
-                    if (claimedUsers.ClaimedUserId.Contains(((SocketGuildUser)messageComponent.User).Id)) {
+                    if (ticket.ClaimedUserId.Contains(((SocketGuildUser)messageComponent.User).Id)) {
                         await messageComponent.RespondAsync("You have already claimed this ticket.", ephemeral: true);
                         return;
                     }
@@ -338,7 +320,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                         useApplicationCommands: PermValue.Allow
                     ));
                     ticket.ClaimedUserId.Add(((SocketGuildUser)messageComponent.User).Id);
-                    await unitOfWork.Ticketing.UpdateItemAsync(ticket.Id, ticket);
+                    await unitOfWork.Ticketing.UpdateItemAsync((m) => m.ChannelId == ticket.ChannelId, ticket);
                     await messageComponent.Message.Channel.SendMessageAsync(embed: new EmbedBuilder {
                         Title = "Ticket Claimed",
                         Fields = [

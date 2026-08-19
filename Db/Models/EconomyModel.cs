@@ -1,4 +1,4 @@
-namespace Finder.Bot.Models.Data;
+namespace Finder.Bot.Db.Models;
 
 public class EconomyModel {
     public Int64 GuildId { get; set; }

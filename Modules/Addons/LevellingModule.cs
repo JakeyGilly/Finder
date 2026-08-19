@@ -2,8 +2,8 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
+using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
-using Finder.Bot.Models.Data;
 
 namespace Finder.Bot.Modules.Addons; 
 
@@ -12,8 +12,12 @@ namespace Finder.Bot.Modules.Addons;
 public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("level", "Get your current level", runMode: RunMode.Async)]
     public async Task LevelCommand() {
-        var id = LevellingModel.FormatId(Context.Guild.Id, Context.User.Id);
-        var levels = await unitOfWork.Levelling.GetLevellingForGuildAsync(Context.Guild.Id, Context.User.Id);
+        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id) ?? new LevellingModel {
+            GuildId = Context.Guild.Id,
+            UserId = Context.User.Id,
+            Level = 0,
+            Exp = 0
+        };
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Level",
             Fields = [
@@ -37,16 +41,18 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         var userId = message.Author.Id;
         if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(guildId, Enums.Addons.Levelling)) return;
         if (message.Author.IsBot) return;
-        var levels = await unitOfWork.Levelling.GetLevellingForGuildAsync(guildId, userId);
+        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id) ?? new LevellingModel {
+            GuildId = Context.Guild.Id,
+            UserId = Context.User.Id,
+            Level = 0,
+            Exp = 0
+        };
         var expToGet = 50 * (int)Math.Pow(1.5, levels.Level + 1);
-        if (++levels.Exp > expToGet) {
-            await unitOfWork.Levelling.UpsertItemAsync(LevellingModel.FormatId(guildId, userId), new LevellingModel {
-                Id = LevellingModel.FormatId(guildId, userId),
-                GuildId = guildId,
-                UserId = userId,
-                Level = levels.Level + 1,
-                Exp = 0
-            });
+        if (++levels.Exp > expToGet)
+        {
+            levels.Level++;
+            levels.Exp = 0;
+            await unitOfWork.Levelling.UpsertItemAsync((m) => m.GuildId == guildId && m.UserId == userId, levels);
             await message.Channel.SendMessageAsync(embed: new EmbedBuilder {
                 Title = $"Level Up {message.Author.Username}",
                 Fields = [
@@ -60,13 +66,7 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                 }
             }.Build());
         } else {
-            await unitOfWork.Levelling.UpsertItemAsync(LevellingModel.FormatId(guildId, userId), new LevellingModel {
-                Id = LevellingModel.FormatId(guildId, userId),
-                GuildId = guildId,
-                UserId = userId,
-                Level = levels.Level,
-                Exp = levels.Exp
-            });
+            await unitOfWork.Levelling.UpsertItemAsync((m) => m.GuildId == guildId && m.UserId == userId, levels);
         }
     }
 }

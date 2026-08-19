@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-namespace Finder.Bot.Models.Data;
+
+namespace Finder.Bot.Db.Models;
 
 public class PollsModel {
     [Key]

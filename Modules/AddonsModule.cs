@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules; 
@@ -15,12 +16,8 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
                 Text = "FinderBot"
             }
         };
-        foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
-            if (addons.TryGetValue((Enums.Addons)addon, out bool installed) && installed) {
-                embed.AddField(addon.ToString(), "Installed");
-            } else {
-                embed.AddField(addon.ToString(), "Not installed");
-            }
+        foreach (var addon in Enum.GetValues<Enums.Addons>()) {
+            embed.AddField(addon.ToString(), addons.Contains((Enums.Addons)addon) ? "Installed" : "Not installed");
         }
         await RespondAsync(embed: embed.Build());
     }
@@ -32,11 +29,15 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
             return;
         }
         var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
-        if (value.TryGetValue(addonEnum, out bool installed) && installed) {
+        if (value.Contains(addonEnum)) {
             await RespondAsync("Error: Addon already installed");
             return;
         }
-        await unitOfWork.Addons.UpdateAddonForGuildAsync(Context.Guild.Id, addonEnum, true);
+        await unitOfWork.Addons.UpsertItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum, new AddonsModel {
+            GuildId = Context.Guild.Id,
+            Addon = addonEnum,
+            Enabled = true
+        });
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Installed",
             Fields = [
@@ -58,11 +59,15 @@ public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sharde
             return;
         }
         var value = await unitOfWork.Addons.GetAddonsForGuildAsync(Context.Guild.Id);
-        if (!value.TryGetValue(addonEnum, out bool installed) || !installed) {
+        if (!value.Contains(addonEnum)) {
             await RespondAsync("Error: Addon not installed");
             return;
         }
-        await unitOfWork.Addons.UpdateAddonForGuildAsync(Context.Guild.Id, addonEnum, false);
+        await unitOfWork.Addons.UpsertItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum, new AddonsModel {
+            GuildId = Context.Guild.Id,
+            Addon = addonEnum,
+            Enabled = false
+        });
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Uninstalled",
             Fields = [
@@ -85,11 +90,7 @@ public class AddonsInstallAutocompleteHandler(IUnitOfWork unitOfWork) : Autocomp
             .. Enum.GetValues<Enums.Addons>()
                 .Select(addon => new AutocompleteResult(addon.ToString(), addon.ToString()))
         ];
-        foreach (var addon in value) {
-            if (value.TryGetValue(addon.Key, out bool installed) && installed) {
-                results.RemoveAll(r => r.Name == addon.Key.ToString());
-            }
-        }
+        results.RemoveAll(r => value.Contains(Enum.Parse<Enums.Addons>(r.Name)));
         // max - 25 suggestions at a time (API limit)
         return AutocompletionResult.FromSuccess(results.Take(25));
     }
@@ -99,9 +100,7 @@ public class AddonsUninstallAutocompleteHandler(IUnitOfWork unitOfWork) : Autoco
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
         var value = await unitOfWork.Addons.GetAddonsForGuildAsync(context.Guild.Id);
         List<AutocompleteResult> results = [
-            .. from addon in value
-            where value.TryGetValue(addon.Key, out bool installed) && installed
-            select new AutocompleteResult(addon.Key.ToString(), addon.Key.ToString())
+            .. value.Select(addon => new AutocompleteResult(addon.ToString(), addon.ToString()))
         ];
         // max - 25 suggestions at a time (API limit)
         return AutocompletionResult.FromSuccess(results.Take(25));

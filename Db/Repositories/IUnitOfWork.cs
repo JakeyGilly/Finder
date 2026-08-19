@@ -1,13 +1,11 @@
-﻿using Finder.Bot.Db.Repositories.Addons;
-using Finder.Bot.Db.Repositories.Levelling;
-using Finder.Bot.Db.Repositories.Tickets;
-using Finder.Bot.Models.Data;
+﻿using Finder.Bot.Db.Models;
+using Finder.Bot.Db.Repositories.Addons;
 
 namespace Finder.Bot.Db.Repositories;
 
 public interface IUnitOfWork {
     IAddonsRepository Addons { get; }
-    ITicketsRepository Ticketing { get; }
+    IRepository<TicketsModel> Ticketing { get; }
     IRepository<CountdownModel> Countdown { get; }
-    ILevellingRepository Levelling { get; }
+    IRepository<LevellingModel> Levelling { get; }
 }

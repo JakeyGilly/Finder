@@ -1,8 +1,9 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
-using Finder.Bot.Models.Data;
+
 namespace Finder.Bot.Modules; 
 
 public class CountdownModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {

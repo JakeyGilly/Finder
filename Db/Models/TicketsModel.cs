@@ -1,11 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using Finder.Bot.Db;
 
-namespace Finder.Bot.Models.Data;
+namespace Finder.Bot.Db.Models;
 
-public class TicketsModel: ICosmosItem {
+public class TicketsModel {
     [Key]
-    public required string Id { get; set; } // ticket channel Id
+    public required ulong ChannelId { get; set; } // pk
     public required ulong GuildId { get; set; }
     public required ulong IntroMessageId { get; set; }
     public List<ulong> UserIds { get; set; } = new();

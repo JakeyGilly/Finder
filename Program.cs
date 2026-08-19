@@ -1,11 +1,12 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Finder.Bot.Db;
 using Finder.Bot.Db.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Finder.Bot.Handlers;
 using Finder.Bot.Modules.Addons;
-using Microsoft.Azure.Cosmos;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace Finder.Bot;
@@ -43,17 +44,11 @@ class Program {
     private static ServiceProvider ConfigureServices(IConfigurationSection configurationSection) {
         string dbName = configurationSection.GetSection("DatabaseName").Value!;
         return new ServiceCollection()
-            .AddSingleton<CosmosClient>(x => InitializeCosmosClientInstanceAsync(configurationSection))
-            .AddScoped<IUnitOfWork, UnitOfWork>(services => new UnitOfWork(services.GetRequiredService<CosmosClient>(), dbName))
+            .AddDbContext<BotDbContext>(options => options.UseNpgsql(configurationSection.GetConnectionString("PostgreSQL")))
+            .AddScoped<IUnitOfWork, UnitOfWork>()
             .AddSingleton<DiscordShardedClient>(x => new DiscordShardedClient(discordConfig))
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
             .AddSingleton<InteractionHandler>()
             .BuildServiceProvider();
-    }
-    
-    private static CosmosClient InitializeCosmosClientInstanceAsync(IConfigurationSection configurationSection) {
-        string account = configurationSection.GetSection("DbUri").Value!;
-        string key = configurationSection.GetSection("PrimaryKey").Value!;
-        return new CosmosClient(account, key);
     }
 }
