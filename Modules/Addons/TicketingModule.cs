@@ -266,7 +266,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
     }
 
     public async Task OnButtonExecutedEvent(SocketMessageComponent messageComponent) {
-        if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(Context.Guild.Id, Enums.Addons.Ticketing)) {
+        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == messageComponent.GuildId && m.Addon == Enums.Addons.Ticketing && m.Enabled) == null) {
             return;
         }
         var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == ((SocketGuildChannel)messageComponent.Message.Channel).Id);

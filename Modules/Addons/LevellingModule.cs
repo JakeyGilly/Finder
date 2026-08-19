@@ -40,7 +40,9 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
     public async Task OnMessageReceivedEvent(SocketMessage message) {
         var guildId = ((SocketGuildChannel)message.Channel).Guild.Id;
         var userId = message.Author.Id;
-        if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(guildId, Enums.Addons.Levelling)) return;
+        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Enums.Addons.Levelling && m.Enabled) == null) {
+            return;
+        }
         if (message.Author.IsBot) return;
         var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == guildId && m.UserId == userId);
         if (levels == null) {

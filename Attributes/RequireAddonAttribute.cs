@@ -10,7 +10,7 @@ public class RequireAddonAttribute(Enums.Addons addon) : PreconditionAttribute {
         if (context.Guild == null)
             return PreconditionResult.FromError("This command can only be used in a server.");
         var unitOfWork = services.GetRequiredService<IUnitOfWork>();
-        bool isEnabled = await unitOfWork.Addons.AddonEnabledInGuildAsync(context.Guild.Id, addon);
+        bool isEnabled = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == addon && m.Enabled) != null;
 
         if (isEnabled) return PreconditionResult.FromSuccess();
         await context.Interaction.RespondAsync(embed: new EmbedBuilder {

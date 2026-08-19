@@ -162,7 +162,7 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
 
 public class ShopAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(context.Guild.Id, Enums.Addons.Economy)) {
+        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Enums.Addons.Economy && m.Enabled) == null) {
             return AutocompletionResult.FromError(InteractionCommandError.Exception, "Economy is disabled on this server.");
         }
         if (ShopModule.Items.Count == 0) {
@@ -175,7 +175,7 @@ public class ShopAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandl
     
 public class InvAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        if (!await unitOfWork.Addons.AddonEnabledInGuildAsync(context.Guild.Id, Enums.Addons.Economy)) {
+        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Enums.Addons.Economy && m.Enabled) == null) {
             return AutocompletionResult.FromError(InteractionCommandError.Exception, "Economy is disabled on this server.");
         }
         var items = await unitOfWork.Inventory.GetItemsAsync(m => m.GuildId == context.Guild.Id && m.UserId == context.User.Id);
