@@ -267,18 +267,16 @@ namespace Finder.Db.Migrations
             modelBuilder.Entity("Finder.Db.Models.Web.UserSettingsModel", b =>
                 {
                     b.Property<decimal>("UserId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("numeric(20,0)");
 
                     b.Property<string>("Setting")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("UserId");
+                    b.HasKey("UserId", "Setting");
 
                     b.ToTable("UserSettings");
                 });

@@ -3,23 +3,23 @@
 @using Finder.Db.UnitOfWork
 @inject IWebUnitOfWork UnitOfWork
 @{
-    bool isBotOwner = User.HasClaim("IsBotOwner", "true");
-    bool darkMode = string.Equals(ViewData["DarkMode"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-    bool devMode = false;
-    
-    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-    var avatar = User.FindFirstValue(DiscordAuthenticationConstants.Claims.AvatarHash) ?? "";
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-
-    if (isAuthenticated && ulong.TryParse(userId, out var parsedUserId) && UnitOfWork?.UserSettings != null) 
-    {
-        var setting = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == parsedUserId && m.Setting == "DevMode");
-        devMode = setting?.Value == "true";
+    var isBotOwner = User.HasClaim("IsBotOwner", "true");
+    var darkMode = false;
+    var devMode = false;
+    var avatarUrl = "https://cdn.discordapp.com/embed/avatars/0.png";
+    
+    if (isAuthenticated) {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var avatar = User.FindFirstValue(DiscordAuthenticationConstants.Claims.AvatarHash);
+        if (avatar != null) {
+            avatarUrl = $"https://cdn.discordapp.com/avatars/{userIdStr}/{avatar}.png";
+        }
+        if (ulong.TryParse(userIdStr, out var userId)) {
+            darkMode = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DarkMode"))?.Value == "true";
+            devMode = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DevMode"))?.Value == "true";
+        }
     }
-
-    var avatarUrl = (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(avatar)) 
-        ? $"https://cdn.discordapp.com/avatars/{userId}/{avatar}.png" 
-        : "https://cdn.discordapp.com/embed/avatars/0.png";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -56,9 +56,9 @@
                         </ul>
                         <div class="d-flex">
                             <li class="nav-item dropdown list-unstyled">
-                                @if (User.Identity.IsAuthenticated) {
+                                @if (isAuthenticated) {
                                     <a class="nav-item nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <img src="https://cdn.discordapp.com/avatars/@userId/@(avatar).png" class="rounded-circle" height="45" alt="Profile" loading="lazy"/>
+                                        <img src=@avatarUrl class="rounded-circle" height="45" alt="Profile" loading="lazy"/>
                                     </a>
                                     <ul class="dropdown-menu dropdown-menu-end">
                                         <li>
@@ -67,8 +67,7 @@
                                         <li>
                                             <a class="dropdown-item" asp-controller="UserSettings" asp-action="Index">Settings</a>
                                         </li>
-                                        @if (User.HasClaim("IsBotOwner", "true") &&
-                                             (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DevMode"))?.Value == "true") {
+                                        @if (devMode || isBotOwner) {
                                             <li>
                                                 <a class="dropdown-item" asp-controller="Dev" asp-action="Token">Tokens (DEV)</a>
                                             </li>

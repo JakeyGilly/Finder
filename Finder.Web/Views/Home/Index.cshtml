@@ -1,19 +1,5 @@
-﻿@using System.Security.Claims
-@using Finder.Db.UnitOfWork
-@inject IWebUnitOfWork UnitOfWork
-@{
+﻿@{
     ViewData["Title"] = "Home Page";
-    var isDarkMode = "false";
-
-    if (User.Identity?.IsAuthenticated == true) {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (ulong.TryParse(userIdStr, out var userId) && UnitOfWork?.UserSettings != null) {
-            var setting = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DarkMode");
-            isDarkMode = setting?.Value ?? "false";
-        }
-    }
-
-    ViewData["DarkMode"] = isDarkMode;
 }
 
 <div class="text-center mt-5">

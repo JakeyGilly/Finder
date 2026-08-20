@@ -3,18 +3,24 @@
 @inject IWebUnitOfWork UnitOfWork
 @{
     ViewData["Title"] = "Settings";
-    var darkMode = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DarkMode");
-    var devMode = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DevMode");
-    ViewData["DarkMode"] = darkMode?.Value ?? "false";
+    var isDarkMode = false;
+    var isDevMode = false;
+    if (User.Identity?.IsAuthenticated == true) {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (ulong.TryParse(userIdStr, out var userId)) {
+            isDarkMode = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DarkMode"))?.Value == "true";
+            isDevMode = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DevMode"))?.Value == "true";
+        }
+    }
 }
 <form action="/user/settings" method="post">
     <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="DarkMode" name="DarkMode" value="true" @(darkMode?.Value == "true" ? "checked=\"checked\"" : "")/>
+        <input class="form-check-input" type="checkbox" id="DarkMode" name="DarkMode" value="true" @(isDarkMode ? "checked=\"checked\"" : "")/>
         <label class="form-check-label" for="DarkMode">Dark Mode</label>
     </div>
     @if (User.HasClaim("IsBotOwner", "true")) {
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="DevMode" name="DevMode" value="true" @(devMode?.Value == "true" ? "checked=\"checked\"" : "")/>
+            <input class="form-check-input" type="checkbox" id="DevMode" name="DevMode" value="true" @(isDevMode ? "checked=\"checked\"" : "")/>
             <label class="form-check-label" for="DevMode">Dev Mode</label>
         </div>
     }

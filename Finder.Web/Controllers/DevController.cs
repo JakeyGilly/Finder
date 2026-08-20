@@ -5,12 +5,7 @@ namespace Finder.Web.Controllers;
 
 [Authorize]
 [Route("api/[controller]")]
-public class DevController : Controller {
-    private readonly ILogger<DevController> _logger;
-    public DevController(ILogger<DevController> logger) {
-        _logger = logger;
-    }
-    
+public class DevController(ILogger<DevController> logger) : Controller {
     [Route("token")]
     public async Task<IActionResult> Token() {
         return Ok(new {

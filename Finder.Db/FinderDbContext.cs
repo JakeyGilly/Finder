@@ -83,6 +83,6 @@ public class FinderDbContext(DbContextOptions<FinderDbContext> options) : DbCont
         
         // Web
         modelBuilder.Entity<UserSettingsModel>()
-            .HasKey(x => x.UserId);
+            .HasKey(x => new { x.UserId, x.Setting });
     }
 }

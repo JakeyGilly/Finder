@@ -1,8 +1,8 @@
-using Finder.Web.Models.DiscordAPIModels;
+using Discord.Rest;
 namespace Finder.Web.Models.DTO;
 
 public class GuildDashboardDTO {
-    public Guild? Guild { get; set; }
-    public List<GuildMember>? GuildMembers { get; set; } = new();
-    public List<GuildChannel>? GuildChannels { get; set; } = new();
+    public RestGuild? Guild { get; set; }
+    public List<RestGuildUser> GuildMembers { get; set; } = new();
+    public List<RestGuildChannel> GuildChannels { get; set; } = new();
 }

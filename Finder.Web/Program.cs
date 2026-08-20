@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Finder.Db;
 using Finder.Db.UnitOfWork;
+using Finder.Web.Services;
 
 namespace Finder.Web;
 
@@ -27,10 +28,14 @@ namespace Finder.Web;
             ?? throw new InvalidOperationException("Configuration error: 'DiscordBotToken' is required.");
 
         var botOwnerIds = configuration["BotOwnerIds"]?.Split(',').Select(id => ulong.Parse(id)).ToList() ?? [];
-        
+
         var builder = WebApplication.CreateBuilder(args);
-        builder.Services.AddDbContext<FinderDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")), ServiceLifetime.Transient);
-        builder.Services.AddTransient<IWebUnitOfWork, WebUnitOfWork>();
+        builder.Services.AddDbContext<FinderDbContext>(options => 
+            options.UseNpgsql(configuration.GetConnectionString("PostgreSQL"))); 
+        builder.Services.AddScoped<IWebUnitOfWork, WebUnitOfWork>();
+        builder.Services.AddScoped<IConfiguration>(_ => configuration);
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddHttpClient<IDiscordApiService, DiscordApiService>();
         builder.Services.AddAuthentication(options => options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options => {
                 options.LoginPath = "/login";
@@ -59,8 +64,8 @@ namespace Finder.Web;
         builder.Services.AddControllersWithViews();
         var app = builder.Build();
         if (app.Environment.IsDevelopment()) app.UseDeveloperExceptionPage();
-        app.UseRouting();
         app.UseStaticFiles();
+        app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");

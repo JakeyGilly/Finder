@@ -10,7 +10,6 @@ public class HomeController(ILogger<HomeController> logger) : Controller {
 
     [Route("privacy")]
     public IActionResult Privacy() {
-        ViewBag.DarkMode = false;
         return View("Privacy");
     }
 }

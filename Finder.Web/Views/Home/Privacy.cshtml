@@ -1,14 +1,5 @@
-﻿@using System.Security.Claims
-@using Finder.Db.UnitOfWork
-@inject IWebUnitOfWork UnitOfWork
-@{
+﻿@{
     ViewData["Title"] = "Privacy Policy";
-    if (User.Identity.IsAuthenticated) {
-        ViewData["DarkMode"] = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DarkMode"))?.Value ?? "false";
-    } else {
-        ViewData["DarkMode"] = "false";
-    }
 }
 <h1>@ViewData["Title"]</h1>
-
 <p>Use this page to detail your site's privacy policy.</p>

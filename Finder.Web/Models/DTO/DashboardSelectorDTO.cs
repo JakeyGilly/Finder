@@ -1,8 +1,9 @@
-using Finder.Web.Models.DiscordAPIModels;
+using Discord;
+using Discord.Rest;
 namespace Finder.Web.Models.DTO;
 
 public class DashboardSelectorDTO {
-    public List<Guild>? BotGuilds { get; set; } = new();
-    public List<Guild>? UserGuilds { get; set; } = new();
-    public User? UserProfile { get; set; } = new();
+    public List<RestUserGuild>? BotGuilds { get; set; } = new();
+    public List<RestUserGuild>? UserGuilds { get; set; } = new();
+    public RestUser? UserProfile { get; set; }
 }
