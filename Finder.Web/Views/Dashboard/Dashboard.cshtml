@@ -1,12 +1,11 @@
-@using Microsoft.AspNetCore.Mvc.TagHelpers
 @using System.Security.Claims
+@using Finder.Db.UnitOfWork
 @using Finder.Web.Models.DiscordAPIModels
-@using Finder.Web.Repositories
-@inject IUnitOfWork UnitOfWork
+@inject IWebUnitOfWork UnitOfWork
 @model Finder.Web.Models.DTO.GuildDashboardDTO
 @{
     ViewData["Title"] = "Dashboard";
-    ViewData["DarkMode"] = await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DarkMode") ?? "false";
+    ViewData["DarkMode"] = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DarkMode"))?.Value ?? "false";
     if (Model.Guild == null) {
         throw new Exception("Guild is null");
     }
@@ -53,19 +52,19 @@
                 <form class="form-check form-switch" style="padding-left: 0; padding-right: 0" action=@($"/dashboard/{Model.Guild.Id}/message") method="post">
                     <div class="rounded" style="background-color: #444">
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="TicTacToeAddon" name="TicTacToeAddon" value="true" @(await UnitOfWork.Addons.AddonEnabled(Model.Guild.Id, "TicTacToe") ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="TicTacToeAddon" name="TicTacToeAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.TicTacToe))?.Enabled == true ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="TicTacToeAddon">TicTacToe Adddon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="EconomyAddon" name="EconomyAddon" value="true" @(await UnitOfWork.Addons.AddonEnabled(Model.Guild.Id, "Economy") ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="EconomyAddon" name="EconomyAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Economy))?.Enabled == true ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="EconomyAddon">Economy Addon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="LevelingAddon" name="LevelingAddon" value="true" @(await UnitOfWork.Addons.AddonEnabled(Model.Guild.Id, "Leveling") ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="LevelingAddon" name="LevelingAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Levelling))?.Enabled == true ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="LevelingAddon">Leveling Adddon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="TicketingAddon" name="TicketingAddon" value="true" @(await UnitOfWork.Addons.AddonEnabled(Model.Guild.Id, "Ticketing") ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="TicketingAddon" name="TicketingAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Ticketing))?.Enabled == true ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="TicketingAddon">Ticketing Addon</label>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>

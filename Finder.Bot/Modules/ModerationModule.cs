@@ -3,15 +3,15 @@ using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
 using Finder.Bot.Db.Models;
-using Finder.Bot.Db.Repositories;
+using Finder.Bot.Enums;
 using Finder.Bot.Factories;
-using Finder.Bot.Modules.Helpers;
-using Finder.Bot.Modules.Helpers.Enums;
+using Finder.Bot.Models;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules; 
 
 [Group("moderation", "Moderation commands.")]
-public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+public class ModerationModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     private static readonly List<ModerationMessage> ModerationMessages = new();
     [SlashCommand("ban", "Bans a user from the server.", runMode: RunMode.Async)]
     public Task BanCommand(SocketGuildUser user, string reason = "No reason given.") 
@@ -48,11 +48,11 @@ public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sh
     [SlashCommand("logs", "Displays the logs for a user.", runMode: RunMode.Async)]
     public async Task LogsCommand(IUser? user = null) {
         user ??= Context.User;
-        var logs = await unitOfWork.UserLogs.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == user.Id) ?? new UserLogsModel() {
+        var logs = await botUnitOfWork.UserLogs.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == user.Id) ?? new UserLogsModel() {
             GuildId = Context.Guild.Id,
             UserId = user.Id
         };
-        var muteRoleId = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.Setting == "muteRoleId");
+        var muteRoleId = await botUnitOfWork.Settings.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.Setting == "muteRoleId");
         var isMuted = muteRoleId != null && ((SocketGuildUser)user).Roles.Any(x => x.Id == ulong.Parse(muteRoleId.Value));
         await RespondAsync(embed: new ModerationEmbedFactory().BuildEmbed($"Logs for {user.Username}")
             .AddField("Warnings", logs.Warns, true)
@@ -76,10 +76,10 @@ public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sh
         var message = await channel.GetMessageAsync(modMsg.MessageId);
         var user = guild.GetUser(modMsg.UserId);
 
-        var userLogs = await unitOfWork.UserLogs.GetItemAsync(m => m.GuildId == guild.Id && m.UserId == user.Id);
+        var userLogs = await botUnitOfWork.UserLogs.GetItemAsync(m => m.GuildId == guild.Id && m.UserId == user.Id);
         if (userLogs == null)
         {
-            unitOfWork.UserLogs.AddItem(userLogs = new()
+            botUnitOfWork.UserLogs.AddItem(userLogs = new()
             {
                 GuildId = guild.Id,
                 UserId = user.Id
@@ -92,7 +92,7 @@ public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sh
 
         await message.RemoveAllReactionsAsync();
         ModerationMessages.Remove(modMsg);
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
     }
 
     private async Task RequestActionAsync(SocketGuildUser user, ModerationMessageType type, string actionName, string? reason = null, string? time = null) {
@@ -169,15 +169,15 @@ public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sh
     }
     
     private async Task ApplyMuteRole(SocketGuild guild, SocketGuildUser user, SocketTextChannel channel) {
-        var muteRoleSetting = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
+        var muteRoleSetting = await botUnitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
         if (muteRoleSetting == null) {
             var newRole = await guild.CreateRoleAsync("Muted", new GuildPermissions(connect: true, readMessageHistory: true), Color.DarkGrey, false, true);
-            unitOfWork.Settings.AddItem(muteRoleSetting = new() {
+            botUnitOfWork.Settings.AddItem(muteRoleSetting = new() {
                 GuildId = guild.Id,
                 Setting = "muteRoleId",
                 Value = newRole.Id.ToString()
             });
-            await unitOfWork.SaveChangesAsync();
+            await botUnitOfWork.SaveChangesAsync();
             foreach (var ch in guild.Channels) {
                 await channel.AddPermissionOverwriteAsync(newRole,
                     OverwritePermissions
@@ -189,7 +189,7 @@ public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sh
     }
     
     private async Task RemoveMuteRole(SocketGuild guild, SocketGuildUser user) {
-        var muteRoleSetting = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
+        var muteRoleSetting = await botUnitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
         if (muteRoleSetting != null) {
             await user.RemoveRoleAsync(guild.GetRole(ulong.Parse(muteRoleSetting.Value)));
         }

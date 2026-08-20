@@ -1,20 +1,25 @@
-﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
-@using System.Security.Claims
+﻿@using System.Security.Claims
 @using AspNet.Security.OAuth.Discord
-@using Finder.Web.Repositories
-@using Finder.Web.Repositories.Web
-@inject IUnitOfWork UnitOfWork
+@using Finder.Db.UnitOfWork
+@inject IWebUnitOfWork UnitOfWork
 @{
     bool isBotOwner = User.HasClaim("IsBotOwner", "true");
-    bool darkMode = ViewData["DarkMode"]!.ToString() == "true";
+    bool darkMode = string.Equals(ViewData["DarkMode"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
     bool devMode = false;
-    var userId = "";
-    var avatar = "";
-    if (User.Identity.IsAuthenticated) {
-        userId = User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value;
-        avatar = User.Claims.First(x => x.Type == DiscordAuthenticationConstants.Claims.AvatarHash).Value;
-        devMode = await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DevMode") == "true";
+    
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+    var avatar = User.FindFirstValue(DiscordAuthenticationConstants.Claims.AvatarHash) ?? "";
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+
+    if (isAuthenticated && ulong.TryParse(userId, out var parsedUserId) && UnitOfWork?.UserSettings != null) 
+    {
+        var setting = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == parsedUserId && m.Setting == "DevMode");
+        devMode = setting?.Value == "true";
     }
+
+    var avatarUrl = (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(avatar)) 
+        ? $"https://cdn.discordapp.com/avatars/{userId}/{avatar}.png" 
+        : "https://cdn.discordapp.com/embed/avatars/0.png";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -63,7 +68,7 @@
                                             <a class="dropdown-item" asp-controller="UserSettings" asp-action="Index">Settings</a>
                                         </li>
                                         @if (User.HasClaim("IsBotOwner", "true") &&
-                                             await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DevMode") == "true") {
+                                             (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DevMode"))?.Value == "true") {
                                             <li>
                                                 <a class="dropdown-item" asp-controller="Dev" asp-action="Token">Tokens (DEV)</a>
                                             </li>

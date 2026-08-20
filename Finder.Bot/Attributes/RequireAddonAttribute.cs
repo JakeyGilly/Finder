@@ -1,16 +1,18 @@
 using Discord;
 using Discord.Interactions;
+using Finder.Db.Repositories;
+using Finder.Db.UnitOfWork;
 using Microsoft.Extensions.DependencyInjection;
-using Finder.Bot.Db.Repositories;
+using Finder.Shared.Enum;
 
 namespace Finder.Bot.Attributes;
 
-public class RequireAddonAttribute(Enums.Addons addon) : PreconditionAttribute {
+public class RequireAddonAttribute(Addons addon) : PreconditionAttribute {
     public override async Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services) {
         if (context.Guild == null)
             return PreconditionResult.FromError("This command can only be used in a server.");
-        var unitOfWork = services.GetRequiredService<IUnitOfWork>();
-        bool isEnabled = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == addon && m.Enabled) != null;
+        var unitOfWork = services.GetRequiredService<IBotUnitOfWork>();
+        var isEnabled = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == addon && m.Enabled) != null;
 
         if (isEnabled) return PreconditionResult.FromSuccess();
         await context.Interaction.RespondAsync(embed: new EmbedBuilder {

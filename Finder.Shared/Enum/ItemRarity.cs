@@ -1,4 +1,4 @@
-namespace Finder.ItemCreator.Enum;
+namespace Finder.Shared.Enum;
 public enum ItemRarity {
     Common,
     Uncommon,

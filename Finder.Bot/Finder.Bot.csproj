@@ -4,8 +4,8 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-	  <UserSecretsId>e04f118b-a932-4f49-9998-4d907cceec82</UserSecretsId>
-	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <UserSecretsId>4e789e83-be6c-495a-8f1e-cdffbf4e0d81</UserSecretsId>
   </PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Discord.Net" Version="3.20.1" />
@@ -13,18 +13,13 @@
 		<PackageReference Include="Discord.Net.Interactions" Version="3.20.1" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.11">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.11" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.11" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
-		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Content Include="..\.dockerignore">
@@ -32,6 +27,7 @@
 	  </Content>
 	</ItemGroup>
 	<ItemGroup>
+	  <ProjectReference Include="..\Finder.Db\Finder.Db.csproj" />
 	  <ProjectReference Include="..\Finder.Shared\Finder.Shared.csproj" />
 	</ItemGroup>
 </Project>

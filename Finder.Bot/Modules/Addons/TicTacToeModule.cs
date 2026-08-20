@@ -3,11 +3,12 @@ using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Repositories;
+using Finder.Db.Repositories;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules.Addons; 
 
-public class TicTacToeModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+public class TicTacToeModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     private static readonly List<TicTacToe> Games = new();
     private static readonly IEnumerable<string> ValidEmotes = new List<string> {
         "1️⃣",
@@ -23,7 +24,7 @@ public class TicTacToeModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         "❌"
     };
 
-    [RequireAddon(Enums.Addons.TicTacToe)]
+    [RequireAddon(Shared.Enum.Addons.TicTacToe)]
     [SlashCommand("tictactoe", "Play TicTacToe", runMode: RunMode.Async)]
     public async Task TicTacToeCommand(SocketGuildUser user) {
         if (user.IsBot) {
