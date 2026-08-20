@@ -9,5 +9,6 @@ public interface IUnitOfWork {
     IRepository<LevellingModel> Levelling { get; }
     IRepository<EconomyModel> Economy { get; }
     IRepository<InventoryModel> Inventory { get; }
+    IRepository<PollsModel> Polls { get; }
     Task SaveChangesAsync();
 }

@@ -3,6 +3,7 @@ using System;
 using Finder.Bot.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Finder.Bot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819231057_forgot tables")]
+    partial class forgottables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -120,60 +123,6 @@ namespace Finder.Bot.Migrations
                     b.ToTable("Leveling");
                 });
 
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollAnswer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Answer")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("PollMessageId")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PollMessageId");
-
-                    b.ToTable("PollAnswers");
-                });
-
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollVoter", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("PollMessageId")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<decimal>("UserId")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PollMessageId");
-
-                    b.ToTable("PollVoters");
-                });
-
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollsModel", b =>
-                {
-                    b.Property<decimal>("MessageId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(20,0)");
-
-                    b.HasKey("MessageId");
-
-                    b.ToTable("Polls");
-                });
-
             modelBuilder.Entity("Finder.Bot.Db.Models.TicketClaimer", b =>
                 {
                     b.Property<int>("Id")
@@ -236,28 +185,6 @@ namespace Finder.Bot.Migrations
                     b.ToTable("Tickets");
                 });
 
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollAnswer", b =>
-                {
-                    b.HasOne("Finder.Bot.Db.Models.PollsModel", "Poll")
-                        .WithMany("Answers")
-                        .HasForeignKey("PollMessageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Poll");
-                });
-
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollVoter", b =>
-                {
-                    b.HasOne("Finder.Bot.Db.Models.PollsModel", "Poll")
-                        .WithMany("Voters")
-                        .HasForeignKey("PollMessageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Poll");
-                });
-
             modelBuilder.Entity("Finder.Bot.Db.Models.TicketClaimer", b =>
                 {
                     b.HasOne("Finder.Bot.Db.Models.TicketsModel", "Ticket")
@@ -278,13 +205,6 @@ namespace Finder.Bot.Migrations
                         .IsRequired();
 
                     b.Navigation("Ticket");
-                });
-
-            modelBuilder.Entity("Finder.Bot.Db.Models.PollsModel", b =>
-                {
-                    b.Navigation("Answers");
-
-                    b.Navigation("Voters");
                 });
 
             modelBuilder.Entity("Finder.Bot.Db.Models.TicketsModel", b =>

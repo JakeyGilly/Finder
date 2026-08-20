@@ -2,7 +2,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Models;
 using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules.Addons; 
@@ -68,7 +67,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("close", "Closes a ticket", runMode: RunMode.Async)]
     public async Task CloseTicket() {
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -93,7 +92,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             await RespondAsync("You do not have permission to claim a ticket.", ephemeral: true);
             return;
         }
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -131,7 +130,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("unclaim", "Unclaims a ticket", runMode: RunMode.Async)]
     public async Task UnclaimTicket() {
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -161,7 +160,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("adduser", "Adds a user to a ticket", runMode: RunMode.Async)]
     public async Task AddUserToTicket(IUser user) {
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -203,7 +202,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("removeuser", "Removes a user from a ticket", runMode: RunMode.Async)]
     public async Task RemoveUserFromTicket(IUser user) {
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -238,7 +237,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
 
     [SlashCommand("leave", "Leaves a ticket", runMode: RunMode.Async)]
     public async Task LeaveTicket() {
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == Context.Channel.Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == Context.Channel.Id);
         if (ticket == null) {
             await RespondAsync("Ticket not found.", ephemeral: true);
             return;
@@ -271,7 +270,7 @@ public class TicketingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
         if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == messageComponent.GuildId && m.Addon == Enums.Addons.Ticketing && m.Enabled) == null) {
             return;
         }
-        var ticket = await unitOfWork.Ticketing.GetItemAsync((m) => m.ChannelId == ((SocketGuildChannel)messageComponent.Message.Channel).Id);
+        var ticket = await unitOfWork.Ticketing.GetItemAsync(m => m.ChannelId == ((SocketGuildChannel)messageComponent.Message.Channel).Id);
         if (ticket == null) {
             await messageComponent.RespondAsync("Ticket not found.", ephemeral: true);
             return;

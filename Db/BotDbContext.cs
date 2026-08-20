@@ -10,6 +10,11 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
     public DbSet<TicketClaimer> TicketClaimers { get; set; }
     public DbSet<LevellingModel> Leveling => Set<LevellingModel>();
     public DbSet<CountdownModel> Countdowns => Set<CountdownModel>();
+    public DbSet<EconomyModel> Economy => Set<EconomyModel>();
+    public DbSet<InventoryModel> Inventory => Set<InventoryModel>();
+    public DbSet<PollsModel> Polls => Set<PollsModel>();
+    public DbSet<PollAnswer> PollAnswers => Set<PollAnswer>();
+    public DbSet<PollVoter> PollVoters => Set<PollVoter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         modelBuilder.Entity<LevellingModel>()
@@ -34,6 +39,14 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
             .WithOne(c => c.Ticket)
             .HasForeignKey(c => c.TicketChannelId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        modelBuilder.Entity<TicketsModel>()
+            .Navigation(p => p.Claimers)
+            .AutoInclude();
+
+        modelBuilder.Entity<TicketsModel>()
+            .Navigation(p => p.Users)
+            .AutoInclude();
 
         modelBuilder.Entity<CountdownModel>()
             .HasKey(x => x.Id);
@@ -44,5 +57,29 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
         modelBuilder.Entity<InventoryModel>()
             .HasKey(x => new { x.GuildId, x.UserId, x.ItemId });
         
+        modelBuilder.Entity<PollsModel>()
+            .HasKey(x => x.MessageId);
+        
+        // one-to-many relationship between PollsModel and PollAnswer
+        modelBuilder.Entity<PollsModel>()
+            .HasMany(t => t.Answers)
+            .WithOne(c => c.Poll)
+            .HasForeignKey(c => c.PollMessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // one-to-many relationship between PollsModel and PollVoter
+        modelBuilder.Entity<PollsModel>()
+            .HasMany(t => t.Voters)
+            .WithOne(c => c.Poll)
+            .HasForeignKey(c => c.PollMessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        modelBuilder.Entity<PollsModel>()
+            .Navigation(p => p.Answers)
+            .AutoInclude();
+
+        modelBuilder.Entity<PollsModel>()
+            .Navigation(p => p.Voters)
+            .AutoInclude();
     }
 }

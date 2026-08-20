@@ -5,6 +5,7 @@ using Finder.Bot.Db;
 using Finder.Bot.Db.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Finder.Bot.Handlers;
+using Finder.Bot.Modules;
 using Finder.Bot.Modules.Addons;
 using Finder.Bot.Modules.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ class Program {
         new CountdownTimer(client, services).StartTimer();
         client.ReactionAdded += TicTacToeModule.OnReactionAddedEvent;
         // client.ReactionAdded += new ModerationModule(services.GetRequiredService<IUnitOfWork>()).OnReactionAddedEvent;
-        // client.ButtonExecuted += new PollModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
+        client.ButtonExecuted += new PollModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
         client.ButtonExecuted += new TicketingModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
         client.MessageReceived += new LevellingModule(services.GetRequiredService<IUnitOfWork>()).OnMessageReceivedEvent;
         await client.LoginAsync(TokenType.Bot, configuration.GetSection("BotToken").Value);

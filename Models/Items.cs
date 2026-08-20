@@ -1,9 +1,7 @@
 using Finder.Bot.Enums;
+
 namespace Finder.Bot.Models;
 
-public class Contents {
-    public List<Item> Items { get; set; } = new();
-}
 public class Item {
     public Guid Id { get; set; }
     public string Name { get; set; }
