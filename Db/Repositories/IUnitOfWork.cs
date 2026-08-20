@@ -10,5 +10,7 @@ public interface IUnitOfWork {
     IRepository<EconomyModel> Economy { get; }
     IRepository<InventoryModel> Inventory { get; }
     IRepository<PollsModel> Polls { get; }
+    IRepository<UserLogsModel> UserLogs { get; }
+    IRepository<SettingsModel> Settings { get; }
     Task SaveChangesAsync();
 }

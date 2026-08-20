@@ -152,6 +152,25 @@ namespace Finder.Bot.Migrations
                     b.ToTable("Polls");
                 });
 
+            modelBuilder.Entity("Finder.Bot.Db.Models.SettingsModel", b =>
+                {
+                    b.Property<decimal>("GuildId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("Setting")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("GuildId");
+
+                    b.ToTable("Settings");
+                });
+
             modelBuilder.Entity("Finder.Bot.Db.Models.TicketClaimer", b =>
                 {
                     b.Property<int>("Id")
@@ -212,6 +231,37 @@ namespace Finder.Bot.Migrations
                     b.HasKey("ChannelId");
 
                     b.ToTable("Tickets");
+                });
+
+            modelBuilder.Entity("Finder.Bot.Db.Models.UserLogsModel", b =>
+                {
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<decimal>("UserId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<int>("Bans")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kicks")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Mutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("TempBan")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TempMute")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Warns")
+                        .HasColumnType("integer");
+
+                    b.HasKey("GuildId", "UserId");
+
+                    b.ToTable("UserLogs");
                 });
 
             modelBuilder.Entity("Finder.Bot.Db.Models.PollVoter", b =>

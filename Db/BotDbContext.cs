@@ -14,6 +14,8 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
     public DbSet<InventoryModel> Inventory => Set<InventoryModel>();
     public DbSet<PollsModel> Polls => Set<PollsModel>();
     public DbSet<PollVoter> PollVoters => Set<PollVoter>();
+    public DbSet<SettingsModel> Settings => Set<SettingsModel>();
+    public DbSet<UserLogsModel> UserLogs => Set<UserLogsModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         modelBuilder.Entity<LevellingModel>()
@@ -47,9 +49,6 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
             .Navigation(p => p.Users)
             .AutoInclude();
 
-        modelBuilder.Entity<CountdownModel>()
-            .HasKey(x => x.Id);
-
         modelBuilder.Entity<EconomyModel>()
             .HasKey(x => new { x.GuildId, x.UserId });
 
@@ -69,5 +68,11 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
         modelBuilder.Entity<PollsModel>()
             .Navigation(p => p.Voters)
             .AutoInclude();
+        
+        modelBuilder.Entity<SettingsModel>()
+            .HasKey(x => x.GuildId);
+        
+        modelBuilder.Entity<UserLogsModel>()
+            .HasKey(x => new { x.GuildId, x.UserId });
     }
 }

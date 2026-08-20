@@ -10,7 +10,9 @@ public class UnitOfWork(BotDbContext context) : IUnitOfWork {
     public IRepository<EconomyModel> Economy { get; } = new EfRepository<EconomyModel>(context);
     public IRepository<InventoryModel> Inventory { get; } = new EfRepository<InventoryModel>(context);
     public IRepository<PollsModel> Polls { get; } = new EfRepository<PollsModel>(context);
-    
+    public IRepository<UserLogsModel> UserLogs { get; } = new EfRepository<UserLogsModel>(context);
+    public IRepository<SettingsModel> Settings { get; } = new EfRepository<SettingsModel>(context);
+
     public async Task SaveChangesAsync() {
         await context.SaveChangesAsync();
     }

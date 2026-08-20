@@ -4,6 +4,7 @@ using Discord.WebSocket;
 
 namespace Finder.Bot.Modules; 
 
+[Group("admin", "Admin commands for the bot")]
 public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("purge", "Purge a number of messages", runMode: RunMode.Async)]
     public async Task PurgeCommand(int count) {
