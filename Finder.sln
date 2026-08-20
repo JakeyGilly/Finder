@@ -12,9 +12,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.env = .env
 		.gitignore = .gitignore
 		.env.example = .env.example
+		start-database.sh = start-database.sh
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Finder.Shared", "Finder.Shared\Finder.Shared.csproj", "{EBEAA73E-6A3A-45BD-8300-A2EFF68D51E0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Finder.Db", "Finder.Db\Finder.Db.csproj", "{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +77,18 @@ Global
 		{EBEAA73E-6A3A-45BD-8300-A2EFF68D51E0}.Release|x64.Build.0 = Release|Any CPU
 		{EBEAA73E-6A3A-45BD-8300-A2EFF68D51E0}.Release|x86.ActiveCfg = Release|Any CPU
 		{EBEAA73E-6A3A-45BD-8300-A2EFF68D51E0}.Release|x86.Build.0 = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|x64.Build.0 = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Debug|x86.Build.0 = Debug|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|x64.ActiveCfg = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|x64.Build.0 = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|x86.ActiveCfg = Release|Any CPU
+		{D9F5D0EA-C0F2-40F4-BE19-8CCA63411254}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,11 +1,11 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Finder.Bot.Db.Repositories;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules; 
 
-public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+public class PollModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("poll", "Create a poll for users to vote on.", runMode: RunMode.Async)]
     public async Task PollCommand(string question, string? answer1 = null, string? answer2 = null, string? answer3 = null, string? answer4 = null, string? answer5 = null, string? answer6 = null, string? answer7 = null, string? answer8 = null, string? answer9 = null, string? answer10 = null,
     string? answer11 = null, string? answer12 = null, string? answer13 = null, string? answer14 = null, string? answer15 = null, string? answer16 = null, string? answer17 = null, string? answer18 = null, string? answer19 = null, string? answer20 = null, string? answer21 = null, string? answer22 = null, 
@@ -32,10 +32,10 @@ public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
         }
         await RespondAsync("", embed: embed.Build(), components: builder.Build());
         var message = await GetOriginalResponseAsync();
-        unitOfWork.Polls.AddItem(new() {
+        botUnitOfWork.Polls.AddItem(new() {
             MessageId = message.Id,
         });
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
     }
         
     public async Task OnButtonExecutedEvent(SocketMessageComponent messageComponent) {
@@ -43,7 +43,7 @@ public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
             !int.TryParse(messageComponent.Data.CustomId.Split('_')[1], out int voteIndex)) {
             return; 
         }
-        var poll = await unitOfWork.Polls.GetItemAsync(m => m.MessageId == messageComponent.Message.Id);
+        var poll = await botUnitOfWork.Polls.GetItemAsync(m => m.MessageId == messageComponent.Message.Id);
         if (poll == null) return;
         if (poll.Voters.Any(v => v.UserId == messageComponent.User.Id)) {
             await messageComponent.RespondAsync("You already voted on this poll", ephemeral: true);
@@ -56,6 +56,6 @@ public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
         await messageComponent.Message.ModifyAsync(x => x.Embed = updatedEmbed.Build());
         await messageComponent.RespondAsync($"You voted for **{label}**", ephemeral: true);
         poll.Voters.Add(new() { UserId = messageComponent.User.Id, PollMessageId = messageComponent.Message.Id });
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
     }
 }

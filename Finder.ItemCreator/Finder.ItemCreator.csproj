@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="Spectre.Console" Version="0.44.1-preview.0.29" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Finder.Shared\Finder.Shared.csproj" />

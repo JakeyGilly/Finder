@@ -1,16 +1,22 @@
 ﻿@using System.Security.Claims
-@using Finder.Web.Repositories
-@inject IUnitOfWork UnitOfWork
+@using Finder.Db.UnitOfWork
+@inject IWebUnitOfWork UnitOfWork
 @{
     ViewData["Title"] = "Home Page";
-    if (User.Identity.IsAuthenticated) {
-        ViewData["DarkMode"] = await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DarkMode") ?? "false";
-    } else {
-        ViewData["DarkMode"] = "false";
+    var isDarkMode = "false";
+
+    if (User.Identity?.IsAuthenticated == true) {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (ulong.TryParse(userIdStr, out var userId) && UnitOfWork?.UserSettings != null) {
+            var setting = await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == userId && m.Setting == "DarkMode");
+            isDarkMode = setting?.Value ?? "false";
+        }
     }
+
+    ViewData["DarkMode"] = isDarkMode;
 }
 
 <div class="text-center mt-5">
-    <img src="https://camo.githubusercontent.com/92372c60b1f299502bec84d966f522af4570c5c2a9b3e962d5b96bd5a310f6a2/68747470733a2f2f63646e2e646973636f72646170702e636f6d2f617661746172732f3933393932323934383136333234343038322f66656661643362343336666234303738376339353866393233306135663739322e706e67" alt="Finder Image"/>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c9/Finder_Icon_macOS_Big_Sur.png?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original" alt="Finder Image" height="200" class="mb-4"/>
     <h1 class="display-4">Finder</h1>
 </div>

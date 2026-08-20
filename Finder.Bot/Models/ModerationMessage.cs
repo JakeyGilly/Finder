@@ -1,5 +1,6 @@
-using Finder.Bot.Modules.Helpers.Enums;
-namespace Finder.Bot.Modules.Helpers;
+using Finder.Bot.Enums;
+
+namespace Finder.Bot.Models;
 
 public class ModerationMessage {
     public ulong MessageId { get; set; }

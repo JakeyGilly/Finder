@@ -1,34 +1,36 @@
-using Finder.Web.Database;
-using Finder.Web.Repositories;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using Finder.Db;
+using Finder.Db.UnitOfWork;
+
 namespace Finder.Web;
 
-public static class Program {
-    public static void Main(string[] args) {
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCORD_CLIENT_ID"))) {
-            Console.WriteLine("Environment variable DISCORD_CLIENT_ID is not set.");
-            return;
+ class Program {
+    static void Main(string[] args) {
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+        var configurationBuilder = new ConfigurationBuilder()
+            .AddEnvironmentVariables();
+        if (environment == "Development") {
+            configurationBuilder.AddUserSecrets<Program>();
         }
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCORD_CLIENT_SECRET"))) {
-            Console.WriteLine("Environment variable DISCORD_CLIENT_SECRET is not set.");
-            return;
-        }
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN"))) {
-            Console.WriteLine("Environment variable DISCORD_BOT_TOKEN is not set.");
-            return;
-        }
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"))) {
-            Console.WriteLine("Environment variable DB_CONNECTION_STRING is not set.");
-            return;
-        }
+        var configuration = configurationBuilder.Build();
+        
+        var connectionString = configuration.GetConnectionString("PostgreSQL") 
+            ?? throw new InvalidOperationException("Configuration error: 'ConnectionStrings:PostgreSQL' is required.");
+        var discordClientId = configuration["DiscordClientId"] 
+            ?? throw new InvalidOperationException("Configuration error: 'DiscordClientId' is required.");
+        var discordClientSecret = configuration["DiscordClientSecret"] 
+            ?? throw new InvalidOperationException("Configuration error: 'DiscordClientSecret' is required.");
+        var discordBotToken = configuration["DiscordBotToken"] 
+            ?? throw new InvalidOperationException("Configuration error: 'DiscordBotToken' is required.");
+
+        var botOwnerIds = configuration["BotOwnerIds"]?.Split(',').Select(id => ulong.Parse(id)).ToList() ?? [];
+        
         var builder = WebApplication.CreateBuilder(args);
-        builder.Services.AddDbContext<ApplicationContext>(options => options.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")!), ServiceLifetime.Transient);
-        builder.Services.AddTransient(typeof(IRepository<>), typeof(Repository<>));
-        builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
+        builder.Services.AddDbContext<FinderDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")), ServiceLifetime.Transient);
+        builder.Services.AddTransient<IWebUnitOfWork, WebUnitOfWork>();
         builder.Services.AddAuthentication(options => options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options => {
                 options.LoginPath = "/login";
@@ -37,14 +39,13 @@ public static class Program {
                 options.Scope.Add("identify");
                 options.Scope.Add("guilds");
                 options.Prompt = "none";
-                options.ClientId = Environment.GetEnvironmentVariable("DISCORD_CLIENT_ID")!;
-                options.ClientSecret = Environment.GetEnvironmentVariable("DISCORD_CLIENT_SECRET")!;
+                options.ClientId = discordClientId;
+                options.ClientSecret = discordClientSecret;
                 options.SaveTokens = true;
                 options.Events = new OAuthEvents {
                     OnCreatingTicket = context => {
-                        List<string> ownerIds = Environment.GetEnvironmentVariable("BOT_OWNER_IDS")?.Split(',').ToList() ?? new List<string>();
                         if (!ulong.TryParse(context.Principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Task.CompletedTask;
-                        if (ownerIds.IsNullOrEmpty() || !ownerIds.Contains(userId.ToString())) {
+                        if (botOwnerIds.Count == 0 || !botOwnerIds.Contains(userId)) {
                             context.Identity.AddClaim(new Claim("IsBotOwner", "false"));
                         } else {
                             context.Identity.AddClaim(new Claim("IsBotOwner", "true"));

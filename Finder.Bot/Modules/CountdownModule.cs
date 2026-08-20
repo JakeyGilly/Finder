@@ -1,11 +1,11 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Finder.Bot.Db.Repositories;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules; 
 
-public class CountdownModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+public class CountdownModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("countdown", "Countdown to a specific date or time", runMode: RunMode.Async)]
     public async Task CountdownCommand(long datetime, IMentionable? ping = null) {
         if (datetime < DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
@@ -29,18 +29,18 @@ public class CountdownModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
             }
         }.Build());
         if (ping == null) {
-            unitOfWork.Countdown.AddItem(new() {
+            botUnitOfWork.Countdown.AddItem(new() {
                 Id = Guid.NewGuid().ToString(),
                 GuildId = Context.Guild.Id,
                 ChannelId = Context.Channel.Id,
                 UnixTime = datetime
             });
-            await unitOfWork.SaveChangesAsync();
+            await botUnitOfWork.SaveChangesAsync();
             return;
         }
         switch (ping) {
             case SocketRole role:
-                unitOfWork.Countdown.AddItem(new() {
+                botUnitOfWork.Countdown.AddItem(new() {
                     Id = Guid.NewGuid().ToString(),
                     GuildId = Context.Guild.Id,
                     ChannelId = Context.Channel.Id,
@@ -49,7 +49,7 @@ public class CountdownModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                 });
                 break;
             case SocketGuildUser user:
-                unitOfWork.Countdown.AddItem(new() {
+                botUnitOfWork.Countdown.AddItem(new() {
                     Id = Guid.NewGuid().ToString(),
                     GuildId = Context.Guild.Id,
                     ChannelId = Context.Channel.Id,
@@ -61,6 +61,6 @@ public class CountdownModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                 await RespondAsync("Invalid mention", ephemeral: true);
                 break;
         }
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
     }
 }

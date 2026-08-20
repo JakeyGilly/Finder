@@ -1,16 +1,16 @@
 using Discord;
 using Discord.Interactions;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Repositories;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules.Addons.Economy;
 
 [Group("inventory", "The inventory commands to view your items.")]
-[RequireAddon(Enums.Addons.Economy)]
-public class InventoryModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+[RequireAddon(Shared.Enum.Addons.Economy)]
+public class InventoryModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("inventory", "View your inventory.")]
     public async Task InventoryCommand() {
-        var items = await unitOfWork.Inventory.GetItemsAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
+        var items = await botUnitOfWork.Inventory.GetItemsAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
         if (items.Count == 0) {
             await RespondAsync("You do not have any items.");
             return;

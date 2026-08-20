@@ -2,12 +2,7 @@
 namespace Finder.Web.Controllers;
 
 [Route("")]
-public class HomeController : Controller {
-    private readonly ILogger<HomeController> _logger;
-    public HomeController(ILogger<HomeController> logger) {
-        _logger = logger;
-    }
-
+public class HomeController(ILogger<HomeController> logger) : Controller {
     [Route("")]
     public IActionResult Index() {
         return View("Index");

@@ -1,27 +1,24 @@
 ﻿using Finder.Web.Models.DiscordAPIModels;
 using Finder.Web.Models.DTO;
-using Finder.Web.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Net;
-using System.Security.Claims;
 using System.Text;
+using Finder.Db.UnitOfWork;
+
 namespace Finder.Web.Controllers;
 
 [Authorize]
 [Route("dashboard")]
-public class DashboardController : Controller {
-    private readonly ILogger<DashboardController> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IUnitOfWork _unitOfWork;
-    public DashboardController(ILogger<DashboardController> logger, IHttpClientFactory httpClientFactory, IUnitOfWork unitOfWork) {
-        _logger = logger;
-        _httpClientFactory = httpClientFactory;
-        _unitOfWork = unitOfWork;
-    }
-    
+public class DashboardController(
+    ILogger<DashboardController> logger,
+    IHttpClientFactory httpClientFactory,
+    IWebUnitOfWork unitOfWork
+) : Controller {
+    private readonly ILogger<DashboardController> _logger = logger;
+
     [Route("")]
     public async Task<IActionResult> Index() {
         return View("Index", new DashboardSelectorDTO {
@@ -47,11 +44,27 @@ public class DashboardController : Controller {
     [HttpPost("{id}/addons")]
     public async Task<IActionResult> Addons(string id, [FromForm] string ticTacToeAddon, [FromForm] string economyAddon, [FromForm] string levelingAddon, [FromForm] string ticketingAddon) {
         var guildId = ulong.Parse(id);
-        await _unitOfWork.Addons.AddAddonAsync(guildId, "TicTacToe", ticTacToeAddon);
-        await _unitOfWork.Addons.AddAddonAsync(guildId, "Economy", economyAddon);
-        await _unitOfWork.Addons.AddAddonAsync(guildId, "Leveling", levelingAddon);
-        await _unitOfWork.Addons.AddAddonAsync(guildId, "Ticketing", ticketingAddon);
-        await _unitOfWork.SaveChangesAsync();
+        unitOfWork.Addons.AddItem(new() {
+            GuildId = guildId,
+            Addon = Shared.Enum.Addons.TicTacToe,
+            Enabled = ticTacToeAddon == "on"
+        });
+        unitOfWork.Addons.AddItem(new() {
+            GuildId = guildId,
+            Addon = Shared.Enum.Addons.Economy,
+            Enabled = economyAddon == "on"
+        });
+        unitOfWork.Addons.AddItem(new() {
+            GuildId = guildId,
+            Addon = Shared.Enum.Addons.Levelling,
+            Enabled = levelingAddon == "on"
+        });
+        unitOfWork.Addons.AddItem(new() {
+            GuildId = guildId,
+            Addon = Shared.Enum.Addons.Ticketing,
+            Enabled = ticketingAddon == "on"
+        });
+        await unitOfWork.SaveChangesAsync();
         return RedirectToAction("Guild", new { id });
     }
     
@@ -73,7 +86,7 @@ public class DashboardController : Controller {
     }
     [NonAction]
     private async Task<HttpResponseMessage> UserDiscordApiGet(string urlEndpoint, Dictionary<string, string>? queryParams = null) {
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         var accessToken = await HttpContext.GetTokenAsync("access_token");
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         if (queryParams == null) return await client.GetAsync($"https://discord.com/api/{urlEndpoint}");
@@ -81,7 +94,7 @@ public class DashboardController : Controller {
     }
     [NonAction]
     private async Task<HttpResponseMessage> BotDiscordApiGet(string urlEndpoint, Dictionary<string, string>? queryParams = null) {
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization", $"Bot {Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN")}");
         if (queryParams == null) return await client.GetAsync($"https://discord.com/api/{urlEndpoint}");
         return await client.GetAsync($"https://discord.com/api/{urlEndpoint}?{string.Join("&", queryParams.Select(x => $"{x.Key}={x.Value}"))}");
@@ -89,7 +102,7 @@ public class DashboardController : Controller {
     
     [NonAction]
     private async Task<HttpResponseMessage> BotDiscordApiPost(string urlEndpoint, string json, Dictionary<string, string>? queryParams = null) {
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         HttpContent content = new StringContent(json, Encoding.UTF8, "application/json");
         client.DefaultRequestHeaders.Add("Authorization", $"Bot {Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN")}");
         if (queryParams == null) return await client.PostAsync($"https://discord.com/api/{urlEndpoint}", content);
@@ -97,7 +110,7 @@ public class DashboardController : Controller {
     }
     [NonAction]
     private async Task RefreshAccessToken(string refreshToken) {
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         var requestData = new Dictionary<string, string> {
             ["grant_type"] = "refresh_token", 
             ["refresh_token"] = refreshToken,

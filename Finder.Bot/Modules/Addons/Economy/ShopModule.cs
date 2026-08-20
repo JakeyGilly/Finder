@@ -1,15 +1,15 @@
 using Discord;
 using Discord.Interactions;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Repositories;
-using Finder.Bot.Models;
+using Finder.Db.UnitOfWork;
+using Finder.Shared.Models;
 using Newtonsoft.Json;
 
 namespace Finder.Bot.Modules.Addons.Economy; 
 
 [Group("shop", "The shop commands to buy items.")]
-[RequireAddon(Enums.Addons.Economy)]
-public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+[RequireAddon(Shared.Enum.Addons.Economy)]
+public class ShopModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     public static List<Item> Items =
         JsonConvert.DeserializeObject<List<Item>>(File.ReadAllText("Modules/Addons/Economy/Items/items.json")) ?? new();
 
@@ -33,9 +33,9 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
             await RespondAsync("This item is not buyable.");
             return;
         }
-        var economy = await unitOfWork.Economy.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
+        var economy = await botUnitOfWork.Economy.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
         if (economy == null) {
-            unitOfWork.Economy.AddItem(economy = new() {
+            botUnitOfWork.Economy.AddItem(economy = new() {
                 GuildId = Context.Guild.Id,
                 UserId = Context.User.Id,
             });
@@ -45,16 +45,16 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
             return;
         }
         economy.Money -= itemToBuy.BuyPrice * amount;
-        var inventoryItem = await unitOfWork.Inventory.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id && m.ItemId == itemId);
+        var inventoryItem = await botUnitOfWork.Inventory.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id && m.ItemId == itemId);
         if (inventoryItem == null) {
-            unitOfWork.Inventory.AddItem(inventoryItem = new() {
+            botUnitOfWork.Inventory.AddItem(inventoryItem = new() {
                 GuildId = Context.Guild.Id,
                 UserId = Context.User.Id,
                 ItemId = itemId
             });
         }
         inventoryItem.Quantity += amount;
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = $"You have purchased {(amount == 1 ? "an" : amount.ToString())} item{(amount == 1 ? "" : "s")}",
             Fields = [
@@ -86,14 +86,14 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
             await RespondAsync("This item is not sellable.");
             return;
         }
-        var inventoryItem = await unitOfWork.Inventory.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id && m.ItemId == itemId);
+        var inventoryItem = await botUnitOfWork.Inventory.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id && m.ItemId == itemId);
         if (inventoryItem == null || inventoryItem.Quantity < amount) {
             await RespondAsync("You do not have enough of this item to sell.");
             return;
         }
-        var economy = await unitOfWork.Economy.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
+        var economy = await botUnitOfWork.Economy.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
         if (economy == null) {
-            unitOfWork.Economy.AddItem(economy = new() {
+            botUnitOfWork.Economy.AddItem(economy = new() {
                 GuildId = Context.Guild.Id,
                 UserId = Context.User.Id,
             });
@@ -101,9 +101,9 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
         economy.Money += itemToSell.SellPrice * amount;
         inventoryItem.Quantity -= amount;
         if (inventoryItem.Quantity == 0) {
-            unitOfWork.Inventory.DeleteItem(inventoryItem);
+            botUnitOfWork.Inventory.DeleteItem(inventoryItem);
         }
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = $"You have sold {(amount == 1 ? amount.ToString() : "an")} item{ (amount == 1 ? "" : "s")}!",
             Fields = [
@@ -160,9 +160,9 @@ public class ShopModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
     }
 }
 
-public class ShopAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
+public class ShopAutocompleteHandler(IBotUnitOfWork botUnitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Enums.Addons.Economy && m.Enabled) == null) {
+        if (await botUnitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Shared.Enum.Addons.Economy && m.Enabled) == null) {
             return AutocompletionResult.FromError(InteractionCommandError.Exception, "Economy is disabled on this server.");
         }
         if (ShopModule.Items.Count == 0) {
@@ -173,12 +173,12 @@ public class ShopAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandl
     }
 }
     
-public class InvAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
+public class InvAutocompleteHandler(IBotUnitOfWork botUnitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Enums.Addons.Economy && m.Enabled) == null) {
+        if (await botUnitOfWork.Addons.GetItemAsync(m => m.GuildId == context.Guild.Id && m.Addon == Shared.Enum.Addons.Economy && m.Enabled) == null) {
             return AutocompletionResult.FromError(InteractionCommandError.Exception, "Economy is disabled on this server.");
         }
-        var items = await unitOfWork.Inventory.GetItemsAsync(m => m.GuildId == context.Guild.Id && m.UserId == context.User.Id);
+        var items = await botUnitOfWork.Inventory.GetItemsAsync(m => m.GuildId == context.Guild.Id && m.UserId == context.User.Id);
         if (items.Count == 0) {
             return AutocompletionResult.FromError(InteractionCommandError.Unsuccessful, "You do not have any items.");
         }

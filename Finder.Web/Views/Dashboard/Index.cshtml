@@ -1,11 +1,10 @@
-﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
-@using System.Security.Claims
-@using Finder.Web.Repositories
-@inject IUnitOfWork UnitOfWork
+﻿@using System.Security.Claims
+@using Finder.Db.UnitOfWork
+@inject IWebUnitOfWork UnitOfWork
 @model Finder.Web.Models.DTO.DashboardSelectorDTO;
 @{
     ViewData["Title"] = "Dashboard";
-    ViewData["DarkMode"] = await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DarkMode") ?? "false";
+    ViewData["DarkMode"] = (await UnitOfWork.UserSettings.GetItemAsync(m => m.UserId == ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value) && m.Setting == "DarkMode"))?.Value ?? "false";
     if (Model.BotGuilds == null) {
         throw new Exception("BotGuilds is null");
     }

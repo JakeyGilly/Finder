@@ -1,8 +1,8 @@
 using Discord;
 using Discord.WebSocket;
 using System.Timers;
-using Finder.Bot.Db.Repositories;
 using Finder.Bot.Factories;
+using Finder.Db.UnitOfWork;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Finder.Bot.Modules.Helpers;
@@ -21,7 +21,7 @@ public class UnBanMuteTimer(DiscordShardedClient client, IServiceProvider servic
     private async Task OnTimerElapsed(object? source, ElapsedEventArgs e) {
         try {
             using var scope = services.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IBotUnitOfWork>();
             var now = DateTime.UtcNow;
             var punishments = await unitOfWork.UserLogs.GetItemsAsync(c =>
                 (c.TempBan != null && c.TempBan < now) ||

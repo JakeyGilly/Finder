@@ -2,23 +2,23 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Attributes;
-using Finder.Bot.Db.Repositories;
+using Finder.Db.UnitOfWork;
 
 namespace Finder.Bot.Modules.Addons; 
 
-[RequireAddon(Enums.Addons.Levelling)]
+[RequireAddon(Shared.Enum.Addons.Levelling)]
 [Group("levelling", "Command For Managing Levelling")]
-public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+public class LevellingModule(IBotUnitOfWork botUnitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("level", "Get your current level", runMode: RunMode.Async)]
     public async Task LevelCommand() {
-        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
+        var levels = await botUnitOfWork.Levelling.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.UserId == Context.User.Id);
         if (levels == null) {
-            unitOfWork.Levelling.AddItem(levels = new() {
+            botUnitOfWork.Levelling.AddItem(levels = new() {
                 GuildId = Context.Guild.Id,
                 UserId = Context.User.Id,
             });
         }
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Level",
             Fields = [
@@ -40,13 +40,13 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
     public async Task OnMessageReceivedEvent(SocketMessage message) {
         var guildId = ((SocketGuildChannel)message.Channel).Guild.Id;
         var userId = message.Author.Id;
-        if (await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Enums.Addons.Levelling && m.Enabled) == null) {
+        if (await botUnitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Shared.Enum.Addons.Levelling && m.Enabled) == null) {
             return;
         }
         if (message.Author.IsBot) return;
-        var levels = await unitOfWork.Levelling.GetItemAsync((m) => m.GuildId == guildId && m.UserId == userId);
+        var levels = await botUnitOfWork.Levelling.GetItemAsync((m) => m.GuildId == guildId && m.UserId == userId);
         if (levels == null) {
-            unitOfWork.Levelling.AddItem(levels = new() {
+            botUnitOfWork.Levelling.AddItem(levels = new() {
                 GuildId = guildId,
                 UserId = userId,
             });
@@ -68,6 +68,6 @@ public class LevellingModule(IUnitOfWork unitOfWork) : InteractionModuleBase<Sha
                 }
             }.Build());
         }
-        await unitOfWork.SaveChangesAsync();
+        await botUnitOfWork.SaveChangesAsync();
     }
 }

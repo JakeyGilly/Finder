@@ -1,13 +1,13 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Finder.Bot.Db;
-using Finder.Bot.Db.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Finder.Bot.Handlers;
 using Finder.Bot.Modules;
 using Finder.Bot.Modules.Addons;
 using Finder.Bot.Modules.Helpers;
+using Finder.Db;
+using Finder.Db.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -22,9 +22,15 @@ class Program {
             configurationBuilder.AddUserSecrets<Program>();
         }
         var configuration = configurationBuilder.Build();
-        await using ServiceProvider services = ConfigureServices(configuration);
+        
+        var connectionString = configuration.GetConnectionString("PostgreSQL") 
+            ?? throw new InvalidOperationException("Configuration error: 'ConnectionStrings:PostgreSQL' is required.");
+        var botToken = configuration["BotToken"] 
+            ?? throw new InvalidOperationException("Configuration error: 'BotToken' is required.");
+        
+        await using ServiceProvider services = ConfigureServices(connectionString);
         using (var scope = services.CreateScope()) {
-            var dbContext = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FinderDbContext>();
             await dbContext.Database.MigrateAsync();
             Console.WriteLine("Database migrations applied successfully.");
         }
@@ -37,24 +43,22 @@ class Program {
         new UnBanMuteTimer(client, services).StartTimer();
         new CountdownTimer(client, services).StartTimer();
         client.ReactionAdded += TicTacToeModule.OnReactionAddedEvent;
-        client.ReactionAdded += new ModerationModule(services.GetRequiredService<IUnitOfWork>()).OnReactionAddedEvent;
-        client.ButtonExecuted += new PollModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
-        client.ButtonExecuted += new TicketingModule(services.GetRequiredService<IUnitOfWork>()).OnButtonExecutedEvent;
-        client.MessageReceived += new LevellingModule(services.GetRequiredService<IUnitOfWork>()).OnMessageReceivedEvent;
-        await client.LoginAsync(TokenType.Bot, configuration.GetSection("BotToken").Value);
+        client.ReactionAdded += new ModerationModule(services.GetRequiredService<IBotUnitOfWork>()).OnReactionAddedEvent;
+        client.ButtonExecuted += new PollModule(services.GetRequiredService<IBotUnitOfWork>()).OnButtonExecutedEvent;
+        client.ButtonExecuted += new TicketingModule(services.GetRequiredService<IBotUnitOfWork>()).OnButtonExecutedEvent;
+        client.MessageReceived += new LevellingModule(services.GetRequiredService<IBotUnitOfWork>()).OnMessageReceivedEvent;
+        await client.LoginAsync(TokenType.Bot, botToken);
         await client.StartAsync();
         await Task.Delay(Timeout.Infinite);
     }
     
-    private static readonly DiscordSocketConfig DiscordConfig = new() {
-        GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.GuildEmojis
-    };
-    
-    private static ServiceProvider ConfigureServices(IConfiguration configuration) {
+    private static ServiceProvider ConfigureServices(string connectionString) {
         return new ServiceCollection()
-            .AddDbContext<BotDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("PostgreSQL")))
-            .AddScoped<IUnitOfWork, UnitOfWork>()
-            .AddSingleton<DiscordShardedClient>(x => new DiscordShardedClient(DiscordConfig))
+            .AddDbContext<FinderDbContext>(options => options.UseNpgsql(connectionString))
+            .AddScoped<IBotUnitOfWork, BotUnitOfWork>()
+            .AddSingleton<DiscordShardedClient>(x => new DiscordShardedClient(new DiscordSocketConfig() {
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.GuildEmojis
+            }))
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
             .AddSingleton<InteractionHandler>()
             .BuildServiceProvider();

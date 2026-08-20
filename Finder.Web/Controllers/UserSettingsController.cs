@@ -1,19 +1,15 @@
-using Finder.Web.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Finder.Db.UnitOfWork;
+
 namespace Finder.Web.Controllers;
 
 [Authorize]
 [Route("user/settings")]
-public class UserSettingsController : Controller {
-    private readonly ILogger<UserSettingsController> _logger;
-    private readonly IUnitOfWork _unitOfWork;
-    public UserSettingsController(ILogger<UserSettingsController> logger, IUnitOfWork unitOfWork) {
-        _logger = logger;
-        _unitOfWork = unitOfWork;
-    }
-    
+public class UserSettingsController(ILogger<UserSettingsController> logger, IWebUnitOfWork unitOfWork) : Controller {
+    private readonly ILogger<UserSettingsController> _logger = logger;
+
     [Route("")]
     public IActionResult Index() {
         return View("Index");
@@ -22,9 +18,17 @@ public class UserSettingsController : Controller {
     [HttpPost("")]
     public async Task<IActionResult> Update(string darkMode, string devMode) {
         var userId = ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value);
-        await _unitOfWork.UserSettings.AddSettingAsync(userId, "DarkMode", darkMode);
-        await _unitOfWork.UserSettings.AddSettingAsync(userId, "DevMode", devMode);
-        await _unitOfWork.SaveChangesAsync();
+        unitOfWork.UserSettings.AddItem(new() {
+            UserId = userId,
+            Setting = "DarkMode",
+            Value = darkMode
+        });
+        unitOfWork.UserSettings.AddItem(new() {
+            UserId = userId,
+            Setting = "DevMode",
+            Value = devMode
+        });
+        await unitOfWork.SaveChangesAsync();
         return RedirectToAction("Index");
     }
 }

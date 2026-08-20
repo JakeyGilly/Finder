@@ -1,4 +1,4 @@
-namespace Finder.Bot.Modules.Helpers.Enums;
+namespace Finder.Bot.Enums;
 
 public enum ModerationMessageType {
     Ban,
