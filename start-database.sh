@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 set -a
 
-if [ ! -f ".env" ]; then
-  echo "Error: Could not find .env file"
-  exit 1
+if ! grep -q "UserSecretsId" *.csproj 2>/dev/null; then
+  dotnet user-secrets init > /dev/null 2>&1
 fi
 
-source ".env"
-CONN_STR="$CONNECTIONSTRINGS__POSTGRESQL"
+CONN_STR=$(dotnet user-secrets list 2>/dev/null | sed -n 's/^ConnectionStrings:PostgreSQL = //p')
 
 if [ -z "$CONN_STR" ]; then
-  echo "Error: Could not find 'ConnectionStrings__PostgreSQL' in .env"
-  exit 1
+  echo "No 'ConnectionStrings:PostgreSQL' found in User Secrets. Initializing default..."
+  CONN_STR="Host=localhost;Port=5432;Database=finderbot;Username=postgres;Password=myPassword;"
+  dotnet user-secrets set "ConnectionStrings:PostgreSQL" "$CONN_STR" > /dev/null 2>&1
 fi
 
 # Helper to extract key-value pairs from EF Core connection string format
@@ -36,6 +35,24 @@ DB_NAME=$(get_conn_param "Database")
 
 DB_CONTAINER_NAME="$DB_NAME-postgres"
 
+if [ "$DB_PASSWORD" = "myPassword" ] || [ -z "$DB_PASSWORD" ]; then
+  echo "Default or missing password detected in User Secrets."
+  printf "Generate a random secure password and update User Secrets? [Y/n]: "
+  read -r REPLY
+  REPLY=${REPLY:-Y}
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    NEW_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
+    if [ -z "$DB_PASSWORD" ]; then
+      CONN_STR="${CONN_STR}Password=${NEW_PASSWORD};"
+    else
+      CONN_STR="${CONN_STR//Password=$DB_PASSWORD/Password=$NEW_PASSWORD}"
+    fi
+    DB_PASSWORD=$NEW_PASSWORD
+    dotnet user-secrets set "ConnectionStrings:PostgreSQL" "$CONN_STR" > /dev/null 2>&1
+    echo "Updated .NET User Secrets with new password."
+  fi
+fi
+
 # Check Docker availability
 if ! [ -x "$(command -v docker)" ]; then
   echo "Docker is not installed."
@@ -59,29 +76,6 @@ else
     if nc -z localhost "$DB_PORT" 2>/dev/null; then
       echo "Error: Port $DB_PORT is already in use."
       exit 1
-    fi
-  fi
-
-  # Auto-generate password if default is detected
-  if [ "$DB_PASSWORD" = "myPassword" ]; then
-    echo "Default password detected in .env"
-    read -p "Generate a random secure password and update .env? [Y/n]: " -r REPLY
-    REPLY=${REPLY:-Y}
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      NEW_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
-      if [[ "$(uname)" == "Darwin" ]]; then
-        sed -i '' "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" ".env"
-      else
-        sed -i "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" ".env"
-      fi
-      DB_PASSWORD=$NEW_PASSWORD
-      CONN_STR="${CONN_STR//Password=myPassword/Password=$NEW_PASSWORD}"
-      export CONNECTIONSTRINGS__POSTGRESQL="$CONN_STR"
-      if ! grep -q "UserSecretsId" *.csproj 2>/dev/null; then
-        dotnet user-secrets init > /dev/null 2>&1
-      fi
-      dotnet user-secrets set "ConnectionStrings:PostgreSQL" "$CONN_STR" > /dev/null 2>&1
-      echo "Updated .env with new password."
     fi
   fi
 
