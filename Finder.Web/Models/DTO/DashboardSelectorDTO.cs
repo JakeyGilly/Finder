@@ -1,4 +1,3 @@
-using Discord;
 using Discord.Rest;
 namespace Finder.Web.Models.DTO;
 

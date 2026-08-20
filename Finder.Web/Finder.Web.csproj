@@ -24,4 +24,9 @@
       <ProjectReference Include="..\Finder.Db\Finder.Db.csproj" />
       <ProjectReference Include="..\Finder.Shared\Finder.Shared.csproj" />
     </ItemGroup>
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
 </Project>

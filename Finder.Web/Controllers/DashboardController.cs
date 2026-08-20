@@ -4,14 +4,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Finder.Db.UnitOfWork;
 using Finder.Web.Services;
-using Discord.Rest;
 
 namespace Finder.Web.Controllers;
 
 [Authorize]
 [Route("dashboard")]
 public class DashboardController(
-    ILogger<DashboardController> logger,
     IWebUnitOfWork unitOfWork,
     IDiscordApiService discordApiService
 ) : Controller {

@@ -11,6 +11,28 @@
     depends_on:
       postgres:
         condition: service_healthy
+  finder.web:
+    image: finder.web
+    build:
+      context: .
+      dockerfile: Finder.Web/Dockerfile
+    environment:
+        - ASPNETCORE_ENVIRONMENT=Production
+        - DOTNET_ENVIRONMENT=Production
+        - ASPNETCORE_URLS=http://+:5000
+        - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=finderbot;Username=postgres;Password=${FINDER_BOT_DB_PASSWORD}
+        - DiscordClientSecret=${DISCORD_CLIENT_SECRET}
+        - DiscordClientId=${DISCORD_CLIENT_ID}
+        - DiscordBotToken=${BOT_TOKEN}
+        - BotOwnerIds__0=${BOT_OWNER_ID_1}
+        - BotOwnerIds__1=${BOT_OWNER_ID_2}
+    ports:
+      - "80:5000"
+    volumes:
+      - finderbot-dataprotection:/home/app/.aspnet/DataProtection-Keys
+    depends_on:
+      postgres:
+        condition: service_healthy
   postgres:
     image: postgres:latest
     container_name: finderbot-postgres
@@ -29,3 +51,4 @@
       retries: 5
 volumes:
   finderbot-postgres-data:
+  finderbot-dataprotection:
