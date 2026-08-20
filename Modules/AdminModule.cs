@@ -4,6 +4,7 @@ using Discord.WebSocket;
 
 namespace Finder.Bot.Modules; 
 
+[Group("admin", "Admin commands for the bot")]
 public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("purge", "Purge a number of messages", runMode: RunMode.Async)]
     public async Task PurgeCommand(int count) {
@@ -30,23 +31,23 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         await ((SocketTextChannel)Context.Channel).ModifyAsync(x => x.SlowModeInterval = seconds);
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Slowmode set",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+            Fields = [
+                new() {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new() {
                     Name = "Slowmode",
                     Value = seconds.ToString(),
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new() {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -63,18 +64,18 @@ public class AdminModule : InteractionModuleBase<ShardedInteractionContext> {
         }
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Channel locked down",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+            Fields = [
+                new() {
                     Name = "Channel",
                     Value = Context.Channel.Name,
                     IsInline = true
                 },
-                new EmbedFieldBuilder {
+                new() {
                     Name = "By user",
                     Value = Context.User.Username,
                     IsInline = true
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }

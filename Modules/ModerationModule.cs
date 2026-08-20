@@ -2,768 +2,196 @@ using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
+using Finder.Bot.Db.Models;
+using Finder.Bot.Db.Repositories;
+using Finder.Bot.Factories;
 using Finder.Bot.Modules.Helpers;
 using Finder.Bot.Modules.Helpers.Enums;
-using Finder.Bot.Repositories;
-using Pathoschild.NaturalTimeParser.Parser;
 
 namespace Finder.Bot.Modules; 
 
-public class ModerationModule : InteractionModuleBase<ShardedInteractionContext> {
-    private readonly IUnitOfWork _unitOfWork;
-    public ModerationModule(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
-    private static readonly List<ModerationMessage> ModerationMessages = new List<ModerationMessage>();
+[Group("moderation", "Moderation commands.")]
+public class ModerationModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
+    private static readonly List<ModerationMessage> ModerationMessages = new();
     [SlashCommand("ban", "Bans a user from the server.", runMode: RunMode.Async)]
-    public async Task BanCommand(SocketGuildUser user, string reason = "No reason given.") {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to ban this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Ban
-        });
-    }
+    public Task BanCommand(SocketGuildUser user, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Ban, "ban", reason);
 
     [SlashCommand("kick", "Kicks a user from the server.", runMode: RunMode.Async)]
-    public async Task KickCommand(SocketGuildUser user, string reason = "No reason given.") {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to kick this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Kick
-        });
-    }
+    public Task KickCommand(SocketGuildUser user, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Kick, "kick", reason);
 
     [SlashCommand("warn", "Warns a user.", runMode: RunMode.Async)]
-    public async Task WarnCommand(SocketGuildUser user, string reason = "No reason given.") {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to warn this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Warn
-        });
-    }
+    public Task WarnCommand(SocketGuildUser user, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Warn, "warn", reason);
 
     [SlashCommand("mute", "Mutes a user.", runMode: RunMode.Async)]
-    public async Task MuteCommand(SocketGuildUser user, string reason = "No reason given.") {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to mute this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Mute
-        });
-    }
-        
-    [SlashCommand("unmute", "Unmutes a user.", runMode: RunMode.Async)]
-    public async Task UnmuteCommand(SocketGuildUser user) {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to unmute this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            Type = ModerationMessageType.Unmute
-        });
-    }
-        
+    public Task MuteCommand(SocketGuildUser user, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Mute, "mute", reason);
+    
+    [SlashCommand("unmute", "Unmutes a user.", runMode: RunMode.Async)] 
+    public Task UnmuteCommand(SocketGuildUser user) 
+        => RequestActionAsync(user, ModerationMessageType.Unmute, "unmute");
+    
     [SlashCommand("unban", "Unbans a user.", runMode: RunMode.Async)]
-    public async Task UnbanCommand(SocketGuildUser user) {
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to unban this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            Type = ModerationMessageType.Unban
-        });
-    }
-        
+    public Task UnbanCommand(SocketGuildUser user) 
+        => RequestActionAsync(user, ModerationMessageType.Unban, "unban");
+
     [SlashCommand("tempban", "Bans a user for a certain amount of time.", runMode: RunMode.Async)]
-    public async Task TempBanCommand(SocketGuildUser user, string time, string reason = "No reason given.") {
-        DateTime timeSpan = DateTime.Now.Offset(time);
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to ban this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "For time",
-                    Value = $"{time}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Tempban,
-            time = timeSpan
-        });
-    }
-        
+    public Task TempBanCommand(SocketGuildUser user, string time, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Tempban, "temp ban", reason, time);
+
     [SlashCommand("tempmute", "Mutes a user for a certain amount of time.", runMode: RunMode.Async)]
-    public async Task TempMuteCommand(SocketGuildUser user, string time, string reason = "No reason given.") {
-        DateTime timeSpan = DateTime.Now.Offset(time);
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = "Are you sure you want to mute this user?",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "User",
-                    Value = $"{user.Mention} ({user.Username})",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "for reason",
-                    Value = $"{reason}",
-                    IsInline = false
-                },
-                new EmbedFieldBuilder {
-                    Name = "For time",
-                    Value = $"{time}",
-                    IsInline = false
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
-        var message = await GetOriginalResponseAsync();
-        await message.AddReactionAsync(new Emoji("✅"));
-        ModerationMessages.Add(new ModerationMessage {
-            messageId = message.Id,
-            channelId = message.Channel.Id,
-            guildId = Context.Guild.Id,
-            senderId = Context.User.Id,
-            userId = user.Id,
-            reason = reason,
-            Type = ModerationMessageType.Tempmute,
-            time = timeSpan
-        });
-    }
+    public Task TempMuteCommand(SocketGuildUser user, string time, string reason = "No reason given.") 
+        => RequestActionAsync(user, ModerationMessageType.Tempmute, "temp mute", reason, time);
 
     [SlashCommand("logs", "Displays the logs for a user.", runMode: RunMode.Async)]
     public async Task LogsCommand(IUser? user = null) {
         user ??= Context.User;
-        var logs = await _unitOfWork.UserLogs.FindAsync(Context.Guild.Id, user.Id);
-        var muteRoleId = await _unitOfWork.Settings.GetSettingAsync(Context.Guild.Id, "muteRoleId");
-        var ismuted = ((SocketGuildUser)user).Roles.Any(x => x.Id == ulong.Parse(muteRoleId!));
-        await RespondAsync(embed: new EmbedBuilder {
-            Title = $"Logs for {user.Username}",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
-                    Name = "Warnings",
-                    Value = logs.Warns,
-                    IsInline = true
-                },
-                new EmbedFieldBuilder {
-                    Name = "Mutes",
-                    Value = logs.Mutes,
-                    IsInline = true
-                },
-                new EmbedFieldBuilder {
-                    Name = "Kicks",
-                    Value = logs.Kicks,
-                    IsInline = true
-                },
-                new EmbedFieldBuilder {
-                    Name = "Bans",
-                    Value = logs.Bans,
-                    IsInline = true
-                },
-                new EmbedFieldBuilder {
-                    Name = "Is Muted",
-                    Value = ismuted ? "Yes" : "No",
-                    IsInline = true
-                }
-            },
-            Footer = new EmbedFooterBuilder {
-                Text = "FinderBot"
-            }
-        }.Build());
+        var logs = await unitOfWork.UserLogs.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.UserId == user.Id) ?? new UserLogsModel() {
+            GuildId = Context.Guild.Id,
+            UserId = user.Id
+        };
+        var muteRoleId = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == Context.Guild.Id && m.Setting == "muteRoleId");
+        var isMuted = muteRoleId != null && ((SocketGuildUser)user).Roles.Any(x => x.Id == ulong.Parse(muteRoleId.Value));
+        await RespondAsync(embed: new ModerationEmbedFactory().BuildEmbed($"Logs for {user.Username}")
+            .AddField("Warnings", logs.Warns, true)
+            .AddField("Mutes", logs.Mutes, true)
+            .AddField("Kicks", logs.Kicks, true)
+            .AddField("Bans", logs.Bans, true)
+            .AddField("Is Muted", isMuted ? "Yes" : "No", true)
+            .Build());
     }
+
+    public async Task OnReactionAddedEvent(Cacheable<IUserMessage, ulong> cacheMessage,
+        Cacheable<IMessageChannel, ulong> cacheChannel, SocketReaction reaction)
+    {
+        if (reaction.User.Value.IsBot || reaction.Emote.Name != "✅") return;
+        var modMsg =
+            ModerationMessages.FirstOrDefault(m => m.MessageId == reaction.MessageId && m.SenderId == reaction.UserId);
+        if (modMsg == null) return;
+
+        var guild = ((SocketGuildChannel)reaction.Channel).Guild;
+        var channel = (SocketTextChannel)guild.GetChannel(modMsg.ChannelId);
+        var message = await channel.GetMessageAsync(modMsg.MessageId);
+        var user = guild.GetUser(modMsg.UserId);
+
+        var userLogs = await unitOfWork.UserLogs.GetItemAsync(m => m.GuildId == guild.Id && m.UserId == user.Id);
+        if (userLogs == null)
+        {
+            unitOfWork.UserLogs.AddItem(userLogs = new()
+            {
+                GuildId = guild.Id,
+                UserId = user.Id
+            });
+        }
+
+        string actionPastTense = modMsg.Type + (modMsg.Type.ToString().EndsWith("e") ? "d" : "ed");
+        await ExecuteModerationAction(modMsg, guild, user, channel, userLogs);
+        await SendEmbeds(message, channel, user, guild, actionPastTense, modMsg);
+
+        await message.RemoveAllReactionsAsync();
+        ModerationMessages.Remove(modMsg);
+        await unitOfWork.SaveChangesAsync();
+    }
+
+    private async Task RequestActionAsync(SocketGuildUser user, ModerationMessageType type, string actionName, string? reason = null, string? time = null) {
+        DateTime? timeSpan = time != null ? DateTimeOffset.Now.Add(TimeSpan.Parse(time)).DateTime : null;
         
-    public async Task OnReactionAddedEvent(Cacheable<IUserMessage, ulong> arg1, Cacheable<IMessageChannel, ulong> arg2, SocketReaction reaction) {
-        if (reaction.User.Value.IsBot) return;
-        foreach (var moderationMessage in ModerationMessages) {
-            var guild = ((SocketGuildChannel)reaction.Channel).Guild;
-            var channel = (SocketTextChannel)guild.GetChannel(moderationMessage.channelId);
-            var message = await channel.GetMessageAsync(moderationMessage.messageId);
-            var user = guild.GetUser(moderationMessage.userId);
-            if (guild.Id != moderationMessage.guildId || message.Id != reaction.MessageId || reaction.UserId != moderationMessage.senderId) continue;
-            if (reaction.User.Value.Id != moderationMessage.senderId || reaction.Emote.Name != "✅") continue;
-            var userLogs = await _unitOfWork.UserLogs.FindAsync(guild.Id, user.Id);
-            switch(moderationMessage.Type) {
-                case ModerationMessageType.Ban:
-                    await guild.AddBanAsync(user, reason: moderationMessage.reason);
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Banned",
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been banned",
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans + 1, userLogs.Kicks, userLogs.Warns, userLogs.Mutes);
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
-                case ModerationMessageType.Kick:
-                    await user.KickAsync(moderationMessage.reason);
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Kicked",
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been kicked",
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans, userLogs.Kicks + 1, userLogs.Warns, userLogs.Mutes);
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
-                case ModerationMessageType.Warn:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Warned",
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been warned",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans, userLogs.Kicks, userLogs.Warns + 1, userLogs.Mutes);
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
-                case ModerationMessageType.Mute:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Muted",
-                        Color = Color.Red,
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been muted",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    if (!(await _unitOfWork.Settings.SettingExists(guild.Id, "muteRoleId"))) {
-                        var muteRole1 = await guild.CreateRoleAsync("Muted", new GuildPermissions(connect: true, readMessageHistory: true), Color.DarkGrey, false, true);
-                        await _unitOfWork.Settings.AddSettingAsync(guild.Id, "muteRoleId", muteRole1.Id.ToString());
-                        await _unitOfWork.SaveChangesAsync();
-                        foreach (var _ in guild.Channels) {
-                            await channel.AddPermissionOverwriteAsync(muteRole1, OverwritePermissions.DenyAll(channel).Modify(viewChannel: PermValue.Allow, readMessageHistory: PermValue.Allow));
-                        }
-                    }
-                    var muteRole = guild.GetRole(Convert.ToUInt64(await _unitOfWork.Settings.GetSettingAsync(guild.Id, "muteRoleId")));
-                    await user.AddRoleAsync(muteRole);
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans, userLogs.Kicks, userLogs.Warns, userLogs.Mutes + 1);
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
-                case ModerationMessageType.Unmute:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Unmuted",
-                        Color = Color.Red,
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been Unmuted",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    var muteRole2 = guild.GetRole(Convert.ToUInt64(await _unitOfWork.Settings.GetSettingAsync(guild.Id, "muteRoleId")));
-                    await user.RemoveRoleAsync(muteRole2);
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    return;
-                case ModerationMessageType.Unban:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "User Unbanned",
-                        Color = Color.Red,
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been unbanned",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    await guild.RemoveBanAsync(user.Id);
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    return;
-                case ModerationMessageType.Tempban:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "Are you sure you want to temp ban this user?",
-                        Color = Color.Red,
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "Until",
-                                Value = $"{moderationMessage.time!.Value}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been Temporarily Banned",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "Until",
-                                    Value = $"{moderationMessage.time!.Value}",
-                                    IsInline = false
-                                }
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans + 1, userLogs.Kicks, userLogs.Warns, userLogs.Mutes);
-                    await _unitOfWork.UserLogs.AddTempbanTime(guild.Id, user.Id, moderationMessage.time!.Value.ToUniversalTime());
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
-                case ModerationMessageType.Tempmute:
-                    await channel.ModifyMessageAsync(message.Id, m => m.Embed = new EmbedBuilder {
-                        Title = "Are you sure you want to temp mute this user?",
-                        Color = Color.Red,
-                        Fields = new List<EmbedFieldBuilder> {
-                            new EmbedFieldBuilder {
-                                Name = "User",
-                                Value = $"{user.Mention} ({user.Username})",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "for reason",
-                                Value = $"{moderationMessage.reason}",
-                                IsInline = false
-                            },
-                            new EmbedFieldBuilder {
-                                Name = "Until",
-                                Value = $"{moderationMessage.time!.Value}",
-                                IsInline = false
-                            }
-                        },
-                        Footer = new EmbedFooterBuilder {
-                            Text = "FinderBot"
-                        }
-                    }.Build());
-                    try {
-                        await user.SendMessageAsync(embed: new EmbedBuilder {
-                            Title = "You have been Temporarily Muted",
-                            Color = Color.Red,
-                            Fields = new List<EmbedFieldBuilder> {
-                                new EmbedFieldBuilder {
-                                    Name = "Server",
-                                    Value = $"{guild.Name}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "for reason",
-                                    Value = $"{moderationMessage.reason}",
-                                    IsInline = false
-                                },
-                                new EmbedFieldBuilder {
-                                    Name = "Until",
-                                    Value = $"{moderationMessage.time!.Value}",
-                                    IsInline = false
-                                }
-                            },
-                            Footer = new EmbedFooterBuilder {
-                                Text = "FinderBot"
-                            },
-                            ThumbnailUrl = guild.IconUrl
-                        }.Build());
-                    } catch (HttpException) {
-                        // User has DMs disabled
-                    }
-                    if (!(await _unitOfWork.Settings.SettingExists(guild.Id, "muteRoleId"))) {
-                        var muteRole1 = await guild.CreateRoleAsync("Muted", new GuildPermissions(connect: true, readMessageHistory: true), Color.DarkGrey, false, true);
-                        await _unitOfWork.Settings.AddSettingAsync(guild.Id, "muteRoleId", muteRole1.Id.ToString());
-                        await _unitOfWork.SaveChangesAsync();
-                        foreach (var _ in guild.Channels) {
-                            await channel.AddPermissionOverwriteAsync(muteRole1, OverwritePermissions.DenyAll(channel).Modify(viewChannel: PermValue.Allow, readMessageHistory: PermValue.Allow));
-                        }
-                    }
-                    var muteRole3 = guild.GetRole(Convert.ToUInt64(await _unitOfWork.Settings.GetSettingAsync(guild.Id, "muteRoleId")));
-                    await user.AddRoleAsync(muteRole3);
-                    await message.RemoveAllReactionsAsync();
-                    ModerationMessages.Remove(moderationMessage);
-                    await _unitOfWork.UserLogs.AddUserLogsAsync(guild.Id, user.Id, userLogs.Bans, userLogs.Kicks, userLogs.Warns, userLogs.Mutes + 1);
-                    await _unitOfWork.UserLogs.AddTempmuteTime(guild.Id, user.Id, moderationMessage.time!.Value.ToUniversalTime());
-                    await _unitOfWork.SaveChangesAsync();
-                    return;
+        var embed = new ModerationEmbedFactory().BuildEmbed($"Are you sure you want to {actionName} this user?", user, reason, timeSpan?.ToString());
+        await RespondAsync(embed: embed.Build());
+        
+        var message = await GetOriginalResponseAsync();
+        await message.AddReactionAsync(new Emoji("✅"));
+        
+        ModerationMessages.Add(new ModerationMessage {
+            MessageId = message.Id,
+            ChannelId = message.Channel.Id,
+            GuildId = Context.Guild.Id,
+            SenderId = Context.User.Id,
+            UserId = user.Id,
+            Reason = reason ?? "No reason given.",
+            Type = type, Time = timeSpan
+        });
+    }
+    
+    private async Task SendEmbeds(IMessage message, SocketTextChannel channel, SocketGuildUser user, SocketGuild guild, string pastTenseAction, ModerationMessage modMsg) {
+        await channel.ModifyMessageAsync(
+            message.Id, m => {
+                m.Embed = new ModerationEmbedFactory()
+                    .BuildEmbed($"User {pastTenseAction}", user, modMsg.Reason, modMsg.Time?.ToString())
+                    .Build();
+            });
+        try {
+            await user.SendMessageAsync(embed: new ModerationEmbedFactory()
+                .BuildEmbed($"You have been {pastTenseAction}", null, modMsg.Reason, modMsg.Time?.ToString())
+                .AddField("Server", guild.Name)
+                .WithColor(Color.Red)
+                .WithThumbnailUrl(guild.IconUrl)
+                .Build());
+        } catch(HttpException) {
+            // User has DMs disabled
+        }
+    }
+    
+    private async Task ExecuteModerationAction(ModerationMessage modMsg, SocketGuild guild, SocketGuildUser user, SocketTextChannel channel, UserLogsModel userLogs) {
+        switch(modMsg.Type) {
+            case ModerationMessageType.Ban:
+            case ModerationMessageType.Tempban:
+                await guild.AddBanAsync(user, reason: modMsg.Reason);
+                userLogs.Bans++;
+                if (modMsg.Type == ModerationMessageType.Tempban) {
+                    userLogs.TempBan = modMsg.Time!.Value.ToUniversalTime();
+                }
+                break;
+            case ModerationMessageType.Kick:
+                await user.KickAsync(modMsg.Reason);
+                userLogs.Kicks++;
+                break;
+            case ModerationMessageType.Warn:
+                userLogs.Warns++;
+                break;
+            case ModerationMessageType.Mute:
+            case ModerationMessageType.Tempmute:
+                await ApplyMuteRole(guild, user, channel);
+                userLogs.Mutes++; 
+                if (modMsg.Type == ModerationMessageType.Tempmute) {
+                    userLogs.TempMute = modMsg.Time!.Value.ToUniversalTime();
+                }
+                break;
+            case ModerationMessageType.Unmute:
+                await RemoveMuteRole(guild, user);
+                break;
+            case ModerationMessageType.Unban:
+                await guild.RemoveBanAsync(user.Id);
+                break;
+        }
+    }
+    
+    private async Task ApplyMuteRole(SocketGuild guild, SocketGuildUser user, SocketTextChannel channel) {
+        var muteRoleSetting = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
+        if (muteRoleSetting == null) {
+            var newRole = await guild.CreateRoleAsync("Muted", new GuildPermissions(connect: true, readMessageHistory: true), Color.DarkGrey, false, true);
+            unitOfWork.Settings.AddItem(muteRoleSetting = new() {
+                GuildId = guild.Id,
+                Setting = "muteRoleId",
+                Value = newRole.Id.ToString()
+            });
+            await unitOfWork.SaveChangesAsync();
+            foreach (var ch in guild.Channels) {
+                await channel.AddPermissionOverwriteAsync(newRole,
+                    OverwritePermissions
+                        .DenyAll(channel)
+                        .Modify(viewChannel: PermValue.Allow, readMessageHistory: PermValue.Allow));
             }
+        }
+        await user.AddRoleAsync(guild.GetRole(ulong.Parse(muteRoleSetting.Value)));
+    }
+    
+    private async Task RemoveMuteRole(SocketGuild guild, SocketGuildUser user) {
+        var muteRoleSetting = await unitOfWork.Settings.GetItemAsync(m => m.GuildId == guild.Id && m.Setting == "muteRoleId");
+        if (muteRoleSetting != null) {
+            await user.RemoveRoleAsync(guild.GetRole(ulong.Parse(muteRoleSetting.Value)));
         }
     }
 }

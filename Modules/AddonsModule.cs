@@ -1,33 +1,22 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Finder.Bot.Repositories;
+using Finder.Bot.Db.Repositories;
 
 namespace Finder.Bot.Modules; 
 
 [Group("addons", "Command For Managing Addons")]
-public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
-    private readonly IUnitOfWork _unitOfWork;
-    public AddonsModule(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
-
+public class AddonsModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedInteractionContext> {
     [SlashCommand("list", "Lists the installed addons", runMode: RunMode.Async)]
     public async Task GetAddons() {
-        var value = await _unitOfWork.Addons.GetAsync(Context.Guild.Id);
+        var addons = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == Context.Guild.Id && m.Enabled);
         var embed = new EmbedBuilder {
             Title = "Addon list",
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
         };
-        if (value == null || value.Addons.Count == 0) {
-            foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
-                embed.AddField(addon.ToString(), "Not installed", false);
-            }
-        } else {
-            foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
-                embed.AddField(addon.ToString(), value.Addons.Keys.Contains(addon.ToString()) && value.Addons.First(x => x.Key == addon.ToString()).Value == "true" ? "Installed" : "Not Installed", false);
-            }
+        foreach (var addon in Enum.GetValues<Enums.Addons>()) {
+            embed.AddField(addon.ToString(), addons.Any(a => a.Addon == addon) ? "Installed" : "Not Installed");
         }
         await RespondAsync(embed: embed.Build());
     }
@@ -38,20 +27,29 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
             await RespondAsync("Error: Addon not found");
             return;
         }
-        if (await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, addon)) {
+        var addonData = await unitOfWork.Addons.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum);
+        if (addonData?.Enabled == true) {
             await RespondAsync("Error: Addon already installed");
             return;
         }
-        await _unitOfWork.Addons.AddAddonAsync(Context.Guild.Id, addon, "true");
-        await _unitOfWork.SaveChangesAsync();
+        if (addonData == null) {
+            unitOfWork.Addons.AddItem(new() {
+                GuildId = Context.Guild.Id,
+                Addon = addonEnum,
+                Enabled = true
+            });
+        } else {
+            addonData.Enabled = true;
+        }
+        await unitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Installed",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+            Fields = [
+                new() {
                     Name = "Addon",
                     Value = addon
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -64,20 +62,21 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
             await RespondAsync("Error: Addon not found");
             return;
         }
-        if (!await _unitOfWork.Addons.AddonEnabled(Context.Guild.Id, addon)) {
+        var addonData = await unitOfWork.Addons.GetItemAsync((m) => m.GuildId == Context.Guild.Id && m.Addon == addonEnum && m.Enabled);
+        if (addonData == null) {
             await RespondAsync("Error: Addon not installed");
             return;
         }
-        await _unitOfWork.Addons.RemoveAddonAsync(Context.Guild.Id, addon);
-        await _unitOfWork.SaveChangesAsync();
+        addonData.Enabled = false;
+        await unitOfWork.SaveChangesAsync();
         await RespondAsync(embed: new EmbedBuilder {
             Title = "Addon Uninstalled",
-            Fields = new List<EmbedFieldBuilder> {
-                new EmbedFieldBuilder {
+            Fields = [
+                new() {
                     Name = "Addon",
                     Value = addon
                 }
-            },
+            ],
             Footer = new EmbedFooterBuilder {
                 Text = "FinderBot"
             }
@@ -85,35 +84,26 @@ public class AddonsModule : InteractionModuleBase<ShardedInteractionContext> {
     }
 }
     
-public class AddonsInstallAutocompleteHandler : AutocompleteHandler {
-    private readonly IUnitOfWork _unitOfWork;
-    public AddonsInstallAutocompleteHandler(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
+public class AddonsInstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        List<AutocompleteResult> results = new List<AutocompleteResult>();
-        foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
-            if (!await _unitOfWork.Addons.AddonEnabled(context.Guild.Id, addon.ToString())) {
-                results.Add(new AutocompleteResult(addon.ToString(), addon.ToString()));
-            }
-        }
+        var installedAddons = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == context.Guild.Id && m.Enabled);
+        List<AutocompleteResult> results = [
+            .. Enum.GetValues<Enums.Addons>()
+                .Where(a => installedAddons.All(x => x.Addon != a))
+                .Select(a => new AutocompleteResult(a.ToString(), a.ToString()))
+                .Take(25)
+        ];
         // max - 25 suggestions at a time (API limit)
-        return AutocompletionResult.FromSuccess(results.Take(25));
+        return AutocompletionResult.FromSuccess(results);
     }
 }
     
-public class AddonsUninstallAutocompleteHandler : AutocompleteHandler {
-    private readonly IUnitOfWork _unitOfWork;
-    public AddonsUninstallAutocompleteHandler(IUnitOfWork unitOfWork) {
-        _unitOfWork = unitOfWork;
-    }
+public class AddonsUninstallAutocompleteHandler(IUnitOfWork unitOfWork) : AutocompleteHandler {
     public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
-        List<AutocompleteResult> results = new List<AutocompleteResult>();
-        foreach (var addon in Enum.GetValues(typeof(Enums.Addons))) {
-            if (await _unitOfWork.Addons.AddonEnabled(context.Guild.Id, addon.ToString())) {
-                results.Add(new AutocompleteResult(addon.ToString(), addon.ToString()));
-            }
-        }
+        var installed = await unitOfWork.Addons.GetItemsAsync((m) => m.GuildId == context.Guild.Id && m.Enabled);
+        List<AutocompleteResult> results = [
+            .. installed.Select(a => new AutocompleteResult(a.ToString(), a.ToString()))
+        ];
         // max - 25 suggestions at a time (API limit)
         return AutocompletionResult.FromSuccess(results.Take(25));
     }
