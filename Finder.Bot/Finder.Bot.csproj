@@ -31,4 +31,7 @@
 	    <Link>.dockerignore</Link>
 	  </Content>
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\Finder.Shared\Finder.Shared.csproj" />
+	</ItemGroup>
 </Project>
