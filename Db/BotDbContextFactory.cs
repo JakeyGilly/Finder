@@ -7,8 +7,8 @@ namespace Finder.Bot.Db;
 public class BotDbContextFactory : IDesignTimeDbContextFactory<BotDbContext> {
     public BotDbContext CreateDbContext(string[] args) {
         IConfigurationRoot configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false)
+            .AddEnvironmentVariables()
+            .AddUserSecrets<Program>() 
             .Build();
 
         var builder = new DbContextOptionsBuilder<BotDbContext>();

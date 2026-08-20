@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -a
 
-if [ ! -f "appsettings.json" ]; then
-  echo "Error: Could not find appsettings.json"
+if [ ! -f ".env" ]; then
+  echo "Error: Could not find .env file"
   exit 1
 fi
 
-# Extract ConnectionStrings.PostgreSQL value
-CONN_STR=$(python3 -c "import json; data=json.load(open('appsettings.json')); print(data.get('ConnectionStrings', {}).get('PostgreSQL', ''))" 2>/dev/null)
+source ".env"
+CONN_STR="$CONNECTIONSTRINGS__POSTGRESQL"
 
 if [ -z "$CONN_STR" ]; then
-  echo "Error: Could not find 'ConnectionStrings:PostgreSQL' in appsettings.json"
+  echo "Error: Could not find 'ConnectionStrings__PostgreSQL' in .env"
   exit 1
 fi
 
@@ -48,9 +48,9 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Handle container lifecycle without premature exits
-if [ "$(docker ps -q -f name=^/${DB_CONTAINER_NAME}$)" ]; then
+if [ "$(docker ps -q -f name=^/"${DB_CONTAINER_NAME}"$)" ]; then
   echo "Database container '$DB_CONTAINER_NAME' is already running."
-elif [ "$(docker ps -q -a -f name=^/${DB_CONTAINER_NAME}$)" ]; then
+elif [ "$(docker ps -q -a -f name=^/"${DB_CONTAINER_NAME}"$)" ]; then
   echo "Starting existing container '$DB_CONTAINER_NAME'..."
   docker start "$DB_CONTAINER_NAME" > /dev/null
 else
@@ -63,19 +63,25 @@ else
   fi
 
   # Auto-generate password if default is detected
-  if [ "$DB_PASSWORD" = "password" ] || [ "$DB_PASSWORD" = "yourpassword" ]; then
-    echo "Default password detected in appsettings.json."
-    read -p "Generate a random secure password and update appsettings.json? [Y/n]: " -r REPLY
+  if [ "$DB_PASSWORD" = "myPassword" ]; then
+    echo "Default password detected in .env"
+    read -p "Generate a random secure password and update .env? [Y/n]: " -r REPLY
     REPLY=${REPLY:-Y}
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       NEW_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
       if [[ "$(uname)" == "Darwin" ]]; then
-        sed -i '' "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
+        sed -i '' "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" ".env"
       else
-        sed -i "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" "appsettings.json"
+        sed -i "s#Password=$DB_PASSWORD#Password=$NEW_PASSWORD#g" ".env"
       fi
       DB_PASSWORD=$NEW_PASSWORD
-      echo "Updated appsettings.json with new password."
+      CONN_STR="${CONN_STR//Password=myPassword/Password=$NEW_PASSWORD}"
+      export CONNECTIONSTRINGS__POSTGRESQL="$CONN_STR"
+      if ! grep -q "UserSecretsId" *.csproj 2>/dev/null; then
+        dotnet user-secrets init > /dev/null 2>&1
+      fi
+      dotnet user-secrets set "ConnectionStrings:PostgreSQL" "$CONN_STR" > /dev/null 2>&1
+      echo "Updated .env with new password."
     fi
   fi
 
@@ -86,7 +92,7 @@ else
     -e POSTGRES_PASSWORD="$DB_PASSWORD" \
     -e POSTGRES_DB="$DB_NAME" \
     -p "$DB_PORT":5432 \
-    postgres:16-alpine > /dev/null
+    docker.io/postgres > /dev/null
   echo "Container '$DB_CONTAINER_NAME' created."
 fi
 

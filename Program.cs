@@ -15,12 +15,19 @@ namespace Finder.Bot;
 
 class Program {
     static async Task Main() {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
-        
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+        var configurationBuilder = new ConfigurationBuilder()
+            .AddEnvironmentVariables();
+        if (environment == "Development") {
+            configurationBuilder.AddUserSecrets<Program>();
+        }
+        var configuration = configurationBuilder.Build();
         await using ServiceProvider services = ConfigureServices(configuration);
+        using (var scope = services.CreateScope()) {
+            var dbContext = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+            await dbContext.Database.MigrateAsync();
+            Console.WriteLine("Database migrations applied successfully.");
+        }
         DiscordShardedClient client = services.GetRequiredService<DiscordShardedClient>();
         InteractionService commands = services.GetRequiredService<InteractionService>();
         InteractionHandler handler = services.GetRequiredService<InteractionHandler>();
