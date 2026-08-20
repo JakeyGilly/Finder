@@ -13,7 +13,6 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
     public DbSet<EconomyModel> Economy => Set<EconomyModel>();
     public DbSet<InventoryModel> Inventory => Set<InventoryModel>();
     public DbSet<PollsModel> Polls => Set<PollsModel>();
-    public DbSet<PollAnswer> PollAnswers => Set<PollAnswer>();
     public DbSet<PollVoter> PollVoters => Set<PollVoter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
@@ -60,23 +59,12 @@ public class BotDbContext(DbContextOptions<BotDbContext> options) : DbContext(op
         modelBuilder.Entity<PollsModel>()
             .HasKey(x => x.MessageId);
         
-        // one-to-many relationship between PollsModel and PollAnswer
-        modelBuilder.Entity<PollsModel>()
-            .HasMany(t => t.Answers)
-            .WithOne(c => c.Poll)
-            .HasForeignKey(c => c.PollMessageId)
-            .OnDelete(DeleteBehavior.Cascade);
-        
         // one-to-many relationship between PollsModel and PollVoter
         modelBuilder.Entity<PollsModel>()
             .HasMany(t => t.Voters)
             .WithOne(c => c.Poll)
             .HasForeignKey(c => c.PollMessageId)
             .OnDelete(DeleteBehavior.Cascade);
-        
-        modelBuilder.Entity<PollsModel>()
-            .Navigation(p => p.Answers)
-            .AutoInclude();
 
         modelBuilder.Entity<PollsModel>()
             .Navigation(p => p.Voters)

@@ -2,7 +2,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Finder.Bot.Db.Repositories;
-using PollAnswer = Finder.Bot.Db.Models.PollAnswer;
 
 namespace Finder.Bot.Modules; 
 
@@ -35,7 +34,6 @@ public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
         var message = await GetOriginalResponseAsync();
         unitOfWork.Polls.AddItem(new() {
             MessageId = message.Id,
-            Answers = [..providedAnswers.Select(a => new PollAnswer { Answer = a, PollMessageId = message.Id })],
         });
         await unitOfWork.SaveChangesAsync();
     }
@@ -53,9 +51,10 @@ public class PollModule(IUnitOfWork unitOfWork) : InteractionModuleBase<ShardedI
         }
         var updatedEmbed = messageComponent.Message.Embeds.First().ToEmbedBuilder();
         var targetField = updatedEmbed.Fields[voteIndex];
+        string label = targetField.Name;
         targetField.Value = (int.Parse(targetField.Value.ToString()!) + 1).ToString();
         await messageComponent.Message.ModifyAsync(x => x.Embed = updatedEmbed.Build());
-        await messageComponent.RespondAsync($"You voted for **{poll.Answers.OrderBy(a => a.Id).ElementAt(voteIndex).Answer}**", ephemeral: true);
+        await messageComponent.RespondAsync($"You voted for **{label}**", ephemeral: true);
         poll.Voters.Add(new() { UserId = messageComponent.User.Id, PollMessageId = messageComponent.Message.Id });
         await unitOfWork.SaveChangesAsync();
     }
