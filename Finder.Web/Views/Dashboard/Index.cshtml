@@ -1,0 +1,73 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using System.Security.Claims
+@using Finder.Web.Repositories
+@inject IUnitOfWork UnitOfWork
+@model Finder.Web.Models.DTO.DashboardSelectorDTO;
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["DarkMode"] = await UnitOfWork.UserSettings.GetUserSettingAsync(ulong.Parse(User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value), "DarkMode") ?? "false";
+    if (Model.BotGuilds == null) {
+        throw new Exception("BotGuilds is null");
+    }
+    if (Model.UserGuilds == null) {
+        throw new Exception("UserGuilds is null");
+    }
+    if (Model.UserProfile == null) {
+        throw new Exception("UserProfile is null");
+    }
+}
+<div class="text-center pt-5 pb-2">
+    <h1>@(Model.UserProfile.Username)@(Model.UserProfile.Username.ToUpperInvariant().EndsWith("S") ? "'" : "'s") Servers</h1>
+    <h4 class="text-muted pt-5">In @(Model.UserGuilds.Count) Guilds</h4>
+</div>
+<div class="row">
+    <div class="w-50 mx-auto">
+        @foreach (var guild in Model.UserGuilds.Where(guild => Model.BotGuilds.Any(x => x.Id == guild.Id))) {
+            <div class="card mt-3 align-self-center">
+                <div class="row g-0">
+                    @if (guild.Icon != null) {
+                        <div class="col-md-4">
+                            <img src=@($"https://cdn.discordapp.com/icons/{guild.Id}/{guild.Icon}.png") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                        </div>
+                    } else {
+                        <div class="col-md-4">
+                            <img src=@("https://camo.githubusercontent.com/92372c60b1f299502bec84d966f522af4570c5c2a9b3e962d5b96bd5a310f6a2/68747470733a2f2f63646e2e646973636f72646170702e636f6d2f617661746172732f3933393932323934383136333234343038322f66656661643362343336666234303738376339353866393233306135663739322e706e67") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                        </div>
+                    }
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title">@guild.Name</h5>
+                            <p class="card-text">@guild.Description</p>
+                            <p class="card-text"><small class="text-muted">@guild.Id</small></p>
+                            <a asp-controller="Dashboard" asp-action="Guild" asp-route-id="@guild.Id" class="btn btn-primary">Go to guild dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        @foreach (var guild in Model.UserGuilds.Where(guild => Model.BotGuilds.All(x => x.Id != guild.Id) && (long.Parse(guild.Permissions) & (8L | 32L)) == (8L | 32L))) {
+            var inviteLink = $"https://discord.com/api/oauth2/authorize?client_id={Environment.GetEnvironmentVariable("DISCORD_CLIENT_ID")}&scope=bot&permissions=86&guild_id={guild.Id}";
+            <div class="card mt-3 align-self-center">
+                <div class="row g-0">
+                    @if (guild.Icon != null) {
+                        <div class="col-md-4">
+                            <img src=@($"https://cdn.discordapp.com/icons/{guild.Id}/{guild.Icon}.png") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                        </div>
+                    } else {
+                        <div class="col-md-4">
+                            <img src=@("https://camo.githubusercontent.com/92372c60b1f299502bec84d966f522af4570c5c2a9b3e962d5b96bd5a310f6a2/68747470733a2f2f63646e2e646973636f72646170702e636f6d2f617661746172732f3933393932323934383136333234343038322f66656661643362343336666234303738376339353866393233306135663739322e706e67") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                        </div>
+                    }
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title">@guild.Name</h5>
+                            <p class="card-text">@guild.Description</p>
+                            <p class="card-text"><small class="text-muted">@guild.Id</small></p>
+                            <a class="btn btn-secondary" href="@inviteLink">Invite Finder to @guild.Name</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

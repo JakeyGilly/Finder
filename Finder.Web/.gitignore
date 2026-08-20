@@ -1,0 +1,9 @@
+bin/
+obj/
+appsettings.json
+launchSettings.json
+.idea/
+.vs/
+Migrations/
+Properties/launchSettings.json
+docker-compose.yml
