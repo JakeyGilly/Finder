@@ -1,0 +1,31 @@
+﻿services:
+  finder.bot:
+    image: finder.bot
+    build:
+      context: .
+      dockerfile: Finder.Bot/Dockerfile
+    environment:
+        - DOTNET_ENVIRONMENT=Production
+        - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=finderbot;Username=postgres;Password=${FINDER_BOT_DB_PASSWORD}
+        - BotToken=${BOT_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:latest
+    container_name: finderbot-postgres
+    environment:
+      POSTGRES_DB: finderbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${FINDER_BOT_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - finderbot-postgres-data:/var/lib/postgresql,
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d finderbot" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  finderbot-postgres-data:
