@@ -16,7 +16,7 @@
 }
 <div class="text-center pt-5 pb-2">
     <h1>@(Model.UserProfile.Username)@(Model.UserProfile.Username.EndsWith("s", StringComparison.InvariantCultureIgnoreCase) ? "'" : "'s") Servers</h1>
-    <h4 class="text-muted pt-5">In @(Model.UserGuilds.Count) Guilds</h4>
+    <h4 class="text-muted pt-5">In @(Model.BotGuilds.Count) Guilds</h4>
 </div>
 <div class="row">
     <div class="w-50 mx-auto">
@@ -29,7 +29,12 @@
                         </div>
                     } else {
                         <div class="col-md-4">
-                            <img src=@("https://camo.githubusercontent.com/92372c60b1f299502bec84d966f522af4570c5c2a9b3e962d5b96bd5a310f6a2/68747470733a2f2f63646e2e646973636f72646170702e636f6d2f617661746172732f3933393932323934383136333234343038322f66656661643362343336666234303738376339353866393233306135663739322e706e67") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                            <img 
+                                src=@($"https://ui-avatars.com/api/?background=313338&size=1024&color=fff&rounded=true&length=3&name={string.Concat(guild.Name.Split(' ').Select(x => x[0]))}")
+                                class="img-fluid rounded-circle"
+                                alt="Guild Icon"
+                                height="50"
+                            />
                         </div>
                     }
                     <div class="col-md-8">
@@ -47,7 +52,7 @@
             var userHasPermissions = guild.Permissions.Has(GuildPermission.ManageGuild) && guild.Permissions.Has(GuildPermission.Administrator);
             return !botInGuild && userHasPermissions;
         })) {
-            var inviteLink = $"https://discord.com/api/oauth2/authorize?client_id={clientId}&scope=bot&permissions=86&guild_id={guild.Id}";
+            var inviteLink = $"https://discord.com/api/oauth2/authorize?client_id={clientId}&scope=bot&permissions=8&guild_id={guild.Id}";
             <div class="card mt-3 align-self-center">
                 <div class="row g-0">
                     @if (guild.IconUrl != null) {
@@ -56,7 +61,12 @@
                         </div>
                     } else {
                         <div class="col-md-4">
-                            <img src=@("https://camo.githubusercontent.com/92372c60b1f299502bec84d966f522af4570c5c2a9b3e962d5b96bd5a310f6a2/68747470733a2f2f63646e2e646973636f72646170702e636f6d2f617661746172732f3933393932323934383136333234343038322f66656661643362343336666234303738376339353866393233306135663739322e706e67") class="img-fluid rounded-circle" alt="Guild Icon" height="50">
+                            <img 
+                                src=@($"https://ui-avatars.com/api/?background=313338&size=1024&color=fff&rounded=true&length=3&name={string.Concat(guild.Name.Split(' ').Select(x => x[0]))}")
+                                class="img-fluid rounded-circle"
+                                alt="Guild Icon"
+                                height="50"
+                            />
                         </div>
                     }
                     <div class="col-md-8">
