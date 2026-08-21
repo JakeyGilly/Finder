@@ -8,7 +8,7 @@ using Finder.Web.Services;
 
 namespace Finder.Web;
 
- class Program {
+class Program {
     static void Main(string[] args) {
         var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
         var configurationBuilder = new ConfigurationBuilder()
@@ -27,7 +27,10 @@ namespace Finder.Web;
         var discordBotToken = configuration["DiscordBotToken"] 
             ?? throw new InvalidOperationException("Configuration error: 'DiscordBotToken' is required.");
 
-        var botOwnerIds = configuration["BotOwnerIds"]?.Split(',').Select(id => ulong.Parse(id)).ToList() ?? [];
+        var botOwnerIds = configuration["BotOwnerIds"]?.Split(',').Select(id => {
+            ulong.TryParse(id, out var userId);
+            return userId;
+        }).ToList() ?? [];
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddDbContext<FinderDbContext>(options => 
