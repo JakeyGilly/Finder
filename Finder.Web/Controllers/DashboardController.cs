@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using System.Security.Claims;
+using Discord;
 using Finder.Web.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,28 +54,41 @@ public class DashboardController(
     }
     
     [HttpPost("{id}/addons")]
-    public async Task<IActionResult> Addons(string id, [FromForm] string ticTacToeAddon, [FromForm] string economyAddon, [FromForm] string levelingAddon, [FromForm] string ticketingAddon) {
-        var guildId = ulong.Parse(id);
-        unitOfWork.Addons.AddItem(new() {
-            GuildId = guildId,
-            Addon = Shared.Enum.Addons.TicTacToe,
-            Enabled = ticTacToeAddon == "on"
-        });
-        unitOfWork.Addons.AddItem(new() {
-            GuildId = guildId,
-            Addon = Shared.Enum.Addons.Economy,
-            Enabled = economyAddon == "on"
-        });
-        unitOfWork.Addons.AddItem(new() {
-            GuildId = guildId,
-            Addon = Shared.Enum.Addons.Levelling,
-            Enabled = levelingAddon == "on"
-        });
-        unitOfWork.Addons.AddItem(new() {
-            GuildId = guildId,
-            Addon = Shared.Enum.Addons.Ticketing,
-            Enabled = ticketingAddon == "on"
-        });
+    public async Task<IActionResult> Addons(string id, [FromForm] bool ticTacToeAddon, [FromForm] bool economyAddon, [FromForm] bool levellingAddon, [FromForm] bool ticketingAddon) {
+        ulong.TryParse(id, out var guildId);
+        var currentTicTacToeAddon = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Shared.Enum.Addons.TicTacToe);
+        var currentEconomyAddon = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Shared.Enum.Addons.Economy);
+        var currentLevelingAddon = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Shared.Enum.Addons.Levelling);
+        var currentTicketingAddon = await unitOfWork.Addons.GetItemAsync(m => m.GuildId == guildId && m.Addon == Shared.Enum.Addons.Ticketing);
+        
+        if (currentTicTacToeAddon == null) {
+            unitOfWork.Addons.AddItem(currentTicTacToeAddon = new() {
+                GuildId = guildId,
+                Addon = Shared.Enum.Addons.TicTacToe,
+            });
+        }
+        if (currentEconomyAddon == null) {
+            unitOfWork.Addons.AddItem(currentEconomyAddon = new() {
+                GuildId = guildId,
+                Addon = Shared.Enum.Addons.Economy,
+            });
+        }
+        if (currentLevelingAddon == null) {
+            unitOfWork.Addons.AddItem(currentLevelingAddon = new() {
+                GuildId = guildId,
+                Addon = Shared.Enum.Addons.Levelling,
+            });
+        }
+        if (currentTicketingAddon == null) {
+            unitOfWork.Addons.AddItem(currentTicketingAddon = new() {
+                GuildId = guildId,
+                Addon = Shared.Enum.Addons.Ticketing,
+            });
+        }
+        currentTicTacToeAddon.Enabled = ticTacToeAddon;
+        currentEconomyAddon.Enabled = economyAddon;
+        currentLevelingAddon.Enabled = levellingAddon;
+        currentTicketingAddon.Enabled = ticketingAddon;
         await unitOfWork.SaveChangesAsync();
         return RedirectToAction("Guild", new { id });
     }

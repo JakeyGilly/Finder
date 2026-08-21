@@ -13,9 +13,17 @@
     if (Model.GuildChannels == null) {
         throw new Exception("GuildChannels is null");
     }
-}
 
-<img src=@(Model.Guild.IconUrl) alt="Guild Icon" width="192" div class="img-fluid rounded-circle mx-auto d-block">
+    var activeAddons = (await UnitOfWork.Addons.GetItemsAsync(m => m.GuildId == Model.Guild.Id))
+        .Where(a => a.Enabled)
+        .Select(a => a.Addon)
+        .ToHashSet();
+}
+@if(Model.Guild.IconUrl != null) {
+    <img src=@(Model.Guild.IconUrl) alt="Guild Icon" width="192" div class="img-fluid rounded-circle mx-auto d-block">
+} else {
+    <img src=@($"https://ui-avatars.com/api/?background=313338&size=1024&color=fff&rounded=true&length=3&name={string.Concat(Model.Guild.Name.Split(' ').Select(x => x[0]))}") alt="Guild Icon" width="192" div class="img-fluid rounded-circle mx-auto d-block">
+}
 <h1 class="text-center mb-3">@(Model.Guild.Name)</h1>
 @switch(Model.Guild.PremiumTier) {
     case PremiumTier.Tier1:
@@ -50,23 +58,23 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Addons</h5>
-                <p class="card-text">0/4 Addons Enabled</p>
-                <form class="form-check form-switch" style="padding-left: 0; padding-right: 0" action=@($"/dashboard/{Model.Guild.Id}/message") method="post">
+                <p class="card-text">@(activeAddons.Count)/4 Addons Enabled</p>
+                <form class="form-check form-switch" style="padding-left: 0; padding-right: 0" action=@($"/dashboard/{Model.Guild.Id}/addons") method="post">
                     <div class="rounded" style="background-color: #444">
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="TicTacToeAddon" name="TicTacToeAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.TicTacToe))?.Enabled == true ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="TicTacToeAddon" name="TicTacToeAddon" value="true" @(activeAddons.Contains(Finder.Shared.Enum.Addons.TicTacToe) ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="TicTacToeAddon">TicTacToe Addon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="EconomyAddon" name="EconomyAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Economy))?.Enabled == true ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="EconomyAddon" name="EconomyAddon" value="true" @(activeAddons.Contains(Finder.Shared.Enum.Addons.Economy) ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="EconomyAddon">Economy Addon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="LevellingAddon" name="LevellingAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Levelling))?.Enabled == true ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="LevellingAddon" name="LevellingAddon" value="true" @(activeAddons.Contains(Finder.Shared.Enum.Addons.Levelling) ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="LevellingAddon">Levelling Addon</label>
                         </div>
                         <div class="m-3 ms-5 ps-0">
-                            <input class="form-check-input" type="checkbox" id="TicketingAddon" name="TicketingAddon" value="true" @((await UnitOfWork.Addons.GetItemAsync(m => m.GuildId == Model.Guild.Id && m.Addon == Finder.Shared.Enum.Addons.Ticketing))?.Enabled == true ? "checked=\"checked\"" : "")/>
+                            <input class="form-check-input" type="checkbox" id="TicketingAddon" name="TicketingAddon" value="true" @(activeAddons.Contains(Finder.Shared.Enum.Addons.Ticketing) ? "checked=\"checked\"" : "")/>
                             <label class="form-check-label" for="TicketingAddon">Ticketing Addon</label>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>

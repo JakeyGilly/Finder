@@ -14,7 +14,7 @@ public class UserSettingsController(ILogger<UserSettingsController> logger, IWeb
     }
     
     [HttpPost("")]
-    public async Task<IActionResult> Update(string darkMode, string devMode) {
+    public async Task<IActionResult> Update([FromForm] string darkMode, [FromForm] string devMode) {
         ulong.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
         Console.WriteLine($"User {userId} updated settings: DarkMode={darkMode}, DevMode={devMode}");
         darkMode = string.IsNullOrEmpty(darkMode) ? "false" : darkMode;
