@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -6,6 +7,8 @@ using Finder.Bot.Handlers;
 using Finder.Bot.Modules;
 using Finder.Bot.Modules.Addons;
 using Finder.Bot.Modules.Helpers;
+using Finder.Bot.Services;
+using Microsoft.Extensions.Logging;
 using Finder.Db;
 using Finder.Db.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
@@ -40,20 +43,45 @@ class Program {
         await handler.InitializeAsync();
         client.Log += LoggingService.LogAsync;
         commands.Log += LoggingService.LogAsync;
-        new UnBanMuteTimer(client, services).StartTimer();
-        new CountdownTimer(client, services).StartTimer();
+        var unbanTimer = new UnBanMuteTimer(client, services);
+        unbanTimer.StartTimer();
+        var countdownTimer = new CountdownTimer(client, services);
+        countdownTimer.StartTimer();
         client.ReactionAdded += TicTacToeModule.OnReactionAddedEvent;
         client.ReactionAdded += new ModerationModule(services.GetRequiredService<IBotUnitOfWork>()).OnReactionAddedEvent;
         client.ButtonExecuted += new PollModule(services.GetRequiredService<IBotUnitOfWork>()).OnButtonExecutedEvent;
         client.ButtonExecuted += new TicketingModule(services.GetRequiredService<IBotUnitOfWork>()).OnButtonExecutedEvent;
         client.MessageReceived += new LevellingModule(services.GetRequiredService<IBotUnitOfWork>()).OnMessageReceivedEvent;
+        client.InteractionCreated += new CodeModule(services.GetRequiredService<Judge0Service>()).OnModalInteractionAsync;
         await client.LoginAsync(TokenType.Bot, botToken);
         await client.StartAsync();
-        await Task.Delay(Timeout.Infinite);
+        
+        var exitSignal = new TaskCompletionSource();
+        using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => {
+            ctx.Cancel = true;
+            exitSignal.TrySetResult();
+        });
+        using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => {
+            ctx.Cancel = true;
+            exitSignal.TrySetResult();
+        });
+        await exitSignal.Task;
+        Console.WriteLine("Stop signal received. Initiating shutdown...");
+
+        unbanTimer.Dispose();
+        countdownTimer.Dispose();
+        await services.GetRequiredService<Judge0Service>().DisposeAsync(); 
+        await client.StopAsync();
+        Console.WriteLine("Bot shut down cleanly.");
     }
     
     private static ServiceProvider ConfigureServices(string connectionString) {
+        
         return new ServiceCollection()
+            .AddLogging(builder => {
+                builder.AddConsole();
+                builder.SetMinimumLevel(LogLevel.Information);
+            })
             .AddDbContext<FinderDbContext>(options => options.UseNpgsql(connectionString))
             .AddScoped<IBotUnitOfWork, BotUnitOfWork>()
             .AddSingleton<DiscordShardedClient>(x => new DiscordShardedClient(new DiscordSocketConfig() {
@@ -61,6 +89,7 @@ class Program {
             }))
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
             .AddSingleton<InteractionHandler>()
+            .AddSingleton<Judge0Service>()
             .BuildServiceProvider();
     }
 }

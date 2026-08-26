@@ -4,5 +4,6 @@ public enum Addons {
     TicTacToe, 
     Economy, 
     Levelling, 
-    Ticketing
+    Ticketing,
+    Code
 }

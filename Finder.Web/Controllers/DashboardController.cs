@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using Discord;
+﻿using Discord;
 using Finder.Web.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

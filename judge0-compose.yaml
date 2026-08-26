@@ -1,0 +1,12 @@
+
+
+networks:
+  finder-net:
+    name: finder-net
+    external: true
+
+services:
+  
+
+volumes:
+  

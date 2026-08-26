@@ -7,8 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Finder.Bot.Modules.Helpers;
 
-public class UnBanMuteTimer(DiscordShardedClient client, IServiceProvider services) {
-    private System.Timers.Timer _messageTimer;
+public class UnBanMuteTimer(DiscordShardedClient client, IServiceProvider services): IDisposable {
+    private System.Timers.Timer? _messageTimer;
+    private bool _isDisposed;
     public void StartTimer() {
         _messageTimer = new System.Timers.Timer(5000) {
             AutoReset = false,
@@ -19,6 +20,7 @@ public class UnBanMuteTimer(DiscordShardedClient client, IServiceProvider servic
     }
 
     private async Task OnTimerElapsed(object? source, ElapsedEventArgs e) {
+        if (_isDisposed) return;
         try {
             using var scope = services.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IBotUnitOfWork>();
@@ -78,7 +80,15 @@ public class UnBanMuteTimer(DiscordShardedClient client, IServiceProvider servic
             // A top-level catch prevents async void from crashing the process
             Console.WriteLine($"[Timer Error] {ex.Message}");
         } finally {
-            _messageTimer.Start();
+            if (!_isDisposed) {
+                _messageTimer?.Start();
+            }
         }
+    }
+
+    public void Dispose() {
+        _isDisposed = true;
+        _messageTimer?.Stop();
+        _messageTimer?.Dispose();
     }
 }
